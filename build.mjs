@@ -163,30 +163,31 @@ await cp(join(root, 'node_modules/pake-cli/LICENSE-EXCEPTION'), join(runtime, 'P
 
 process.stdout.write(`Prepared ${runtime}\n`)
 if (!process.argv.includes('--prepare-only')) {
+  if (windows) await rm(join(tauriRoot, 'target/release/bundle/nsis'), { recursive: true, force: true })
   tauri(['build', '--bundles', windows ? 'nsis' : 'app', '--', '--locked'], stage)
   const output = join(root, 'dist')
   await mkdir(output, { recursive: true })
+  const label = `${windows ? 'windows' : 'macos'}-${process.arch}`
+  const artifactName = `OwnDsh-${manifest.version}-${label}${windows ? '-setup.exe' : '.dmg'}`
   if (windows) {
     const bundle = join(tauriRoot, 'target/release/bundle/nsis')
     const installers = (await readdir(bundle)).filter(name => name.endsWith('.exe'))
     assert.equal(installers.length, 1, 'Expected one NSIS installer')
-    await cp(join(bundle, installers[0]), join(output, `OwnDsh-${manifest.version}-windows-x64-setup.exe`))
+    await cp(join(bundle, installers[0]), join(output, artifactName))
   } else {
-  const app = join(output, 'OwnDsh.app')
-  await rm(app, { recursive: true, force: true })
-  await cp(join(tauriRoot, 'target/release/bundle/macos/OwnDsh.app'), app, { recursive: true, verbatimSymlinks: true })
-  const imageRoot = join(root, '.build', 'dmg')
-  await rm(imageRoot, { recursive: true, force: true })
-  await mkdir(imageRoot, { recursive: true })
-  await symlink('/Applications', join(imageRoot, 'Applications'))
-  await cp(app, join(imageRoot, 'OwnDsh.app'), { recursive: true, verbatimSymlinks: true })
-  const dmg = join(output, `OwnDsh-${manifest.version}-macos-${process.arch}.dmg`)
-  run('hdiutil', ['create', '-volname', 'OwnDsh', '-srcfolder', imageRoot, '-ov', '-format', 'UDZO', dmg])
-  process.stdout.write(`Built ${app}\nBuilt ${dmg}\n`)
+    const app = join(output, 'OwnDsh.app')
+    await rm(app, { recursive: true, force: true })
+    await cp(join(tauriRoot, 'target/release/bundle/macos/OwnDsh.app'), app, { recursive: true, verbatimSymlinks: true })
+    const imageRoot = join(root, '.build', 'dmg')
+    await rm(imageRoot, { recursive: true, force: true })
+    await mkdir(imageRoot, { recursive: true })
+    await symlink('/Applications', join(imageRoot, 'Applications'))
+    await cp(app, join(imageRoot, 'OwnDsh.app'), { recursive: true, verbatimSymlinks: true })
+    const dmg = join(output, artifactName)
+    run('hdiutil', ['create', '-volname', 'OwnDsh', '-srcfolder', imageRoot, '-ov', '-format', 'UDZO', dmg])
+    process.stdout.write(`Built ${app}\nBuilt ${dmg}\n`)
   }
-  const label = `${windows ? 'windows' : 'macos'}-${process.arch}`
   await cp(join(runtime, 'build-info.json'), join(output, `build-info-${label}.json`))
-  const artifacts = (await readdir(output)).filter(name => /\.(dmg|exe)$/.test(name))
-  const sums = await Promise.all(artifacts.map(async name => `${createHash('sha256').update(await readFile(join(output, name))).digest('hex')}  ${name}`))
-  await writeFile(join(output, `SHA256SUMS-${label}.txt`), `${sums.join('\n')}\n`)
+  const hash = createHash('sha256').update(await readFile(join(output, artifactName))).digest('hex')
+  await writeFile(join(output, `SHA256SUMS-${label}.txt`), `${hash}  ${artifactName}\n`)
 }

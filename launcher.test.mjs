@@ -8,7 +8,7 @@
 import assert from 'node:assert/strict'
 import { spawn, execFileSync } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { join, dirname, delimiter } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -80,7 +80,7 @@ test('packaged runtime boots without system Node/pnpm and preserves user choices
     for (const [command, dependency] of [['dsh', '@deepseek-ai/dsh'], ['pnpm', 'pnpm']]) {
       const wrapper = join(runtime, 'bin', windows ? `${command}.cmd` : command)
       const version = windows
-        ? execFileSync(environment.ComSpec, ['/d', '/s', '/c', `""${wrapper}" --version"`], { env: environment, encoding: 'utf8' })
+        ? execFileSync(environment.ComSpec, ['/d', '/s', '/c', `""${wrapper}" --version"`], { env: environment, encoding: 'utf8', windowsVerbatimArguments: true })
         : execFileSync(wrapper, ['--version'], { env: environment, encoding: 'utf8' })
       assert.equal(version.trim(), versions[dependency])
     }
@@ -153,6 +153,13 @@ test('Windows Job reclaims the Host even when the launcher is force killed', { s
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh crash test '))
   let instance
   try {
+    // 进程回收仅验证官方 Host，避免企业插件加载故障遮住平台生命周期问题。
+    const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']
+    await mkdir(join(home, 'profiles/web'), { recursive: true })
+    await writeFile(join(home, 'profiles/web/package.json'), JSON.stringify({
+      private: true, type: 'module', dependencies: Object.fromEntries(bundles.map(name => [name, versions['@deepseek-ai/dsh']])),
+      dsh: { profile: { bundles } },
+    }))
     instance = await start(home)
     const { pid } = JSON.parse(await readFile(join(home, 'desktop-runtime.json'), 'utf8'))
     const exited = once(instance.child, 'exit')
