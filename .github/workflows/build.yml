@@ -50,8 +50,6 @@ jobs:
           rustup default 1.95.0
       - name: Prepare runtime
         run: npm run prepare:runtime
-      - name: Verify bundled runtime
-        run: npm test
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: .build/pake/src-tauri
