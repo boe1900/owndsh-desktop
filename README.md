@@ -47,6 +47,8 @@ npm run build
 
 运行测试使用带空格的临时目录与不含系统 Node/pnpm 的 PATH，验证内置命令、首次空配置、官方 Cookie/WebSocket、Server 持久化、退出回收和卸载不复活；Windows 额外验证强杀 launcher 后无 Host 遗留。Mac 构建后对 `.app` 内实际 runtime 复测并验证签名，Windows 静默安装到带空格路径后复测实际安装内容。插件认证、页面确认框和插件市场的业务测试保留在插件仓库，可通过 `OWNDSH_TEST_RUNTIME` 显式指向本仓库准备的运行树。
 
+CI 同时通过 `OWNDSH_TEST_APP` 启动实际原生程序，验证壳能启动随包服务、完成窗口初始化，并在原生宿主被终止后回收 launcher 和 Host。该检查使用隔离数据目录；本地默认跳过，显式启用前应完全退出其他 OwnDsh 实例，避免单实例机制接管测试启动。
+
 ## GitHub 构建与发布
 
 push `main`、PR 或手动 Run workflow 均构建三种安装包，互相独立并保留 14 天制品。正式交付时更新 `package.json`/`package-lock.json` 的桌面版本，推送相同的 `v版本` 标签；三平台通过后自动创建包含相同制品的 **草稿 Release**，审核后手动公开发布。

@@ -1,6 +1,6 @@
 /**
- * [INPUT]: 依赖准备后的真实内置 Node/Harness/OwnDsh 与临时用户目录，不依赖开发机的 dsh/pnpm
- * [OUTPUT]: 验证离线播种/版本升级、WebSocket、Server 持久化、退出回收与用户卸载不复活
+ * [INPUT]: 依赖真实随包运行环境、可选 OWNDSH_TEST_APP 原生入口与临时用户目录
+ * [OUTPUT]: 验证离线播种/升级、WebSocket、配置持久化、卸载保留，以及原生壳启动与进程回收
  * [POS]: desktop 的最小真实进程回归，可同样指向安装包中的 runtime
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -29,6 +29,12 @@ const environment = windows ? {
   PATH: [join(process.env.SystemRoot, 'System32'), process.env.SystemRoot].join(delimiter),
 } : { HOME: process.env.HOME, PATH: '/usr/bin:/bin:/usr/sbin:/sbin' }
 const versions = JSON.parse(await readFile(join(runtime, 'package.json'), 'utf8')).dependencies
+const isRunning = pid => {
+  try { process.kill(pid, 0); return true } catch (error) {
+    if (error.code === 'ESRCH') return false
+    throw error
+  }
+}
 
 async function start(home) {
   const child = spawn(node, [join(runtime, 'launcher.mjs')], {
@@ -173,13 +179,7 @@ test('Windows Job reclaims the Host even when the launcher is force killed', { s
     const exited = once(instance.child, 'exit')
     instance.child.kill('SIGKILL')
     await exited
-    for (let attempt = 0; attempt < 100; attempt++) {
-      try { process.kill(pid, 0) } catch (error) {
-        if (error.code === 'ESRCH') break
-        throw error
-      }
-      await delay(50)
-    }
+    for (let attempt = 0; attempt < 100 && isRunning(pid); attempt++) await delay(50)
     assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' })
     await assert.rejects(fetch(instance.url, { signal: AbortSignal.timeout(2000) }))
   } finally {
@@ -187,6 +187,57 @@ test('Windows Job reclaims the Host even when the launcher is force killed', { s
       const exited = once(instance.child, 'exit')
       instance.child.stdin.end()
       await exited
+    }
+    await rm(home, { recursive: true, force: true })
+  }
+})
+
+test('native application starts its bundled service and leaves no Host after termination', {
+  skip: !process.env.OWNDSH_TEST_APP, timeout: 150000,
+}, async () => {
+  const home = await mkdtemp(join(tmpdir(), 'OwnDsh native app test '))
+  const app = spawn(process.env.OWNDSH_TEST_APP, [], {
+    env: { ...environment, OWNDSH_DESKTOP_HOME: home }, stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  let output = ''
+  let launchError
+  let state
+  app.once('error', error => { launchError = error })
+  for (const stream of [app.stdout, app.stderr]) stream.on('data', chunk => { output += chunk })
+  try {
+    for (let attempt = 0; attempt < 180; attempt++) {
+      if (launchError) throw launchError
+      assert.equal(app.exitCode, null, 'Native application exited during startup')
+      state = await readFile(join(home, 'desktop-runtime.json'), 'utf8').then(JSON.parse).catch(error => {
+        if (error.code === 'ENOENT') return undefined
+        throw error
+      })
+      if (state) break
+      await delay(500)
+    }
+    assert.ok(state, 'Native application must start the bundled launcher')
+    assert.match(state.url, /^http:\/\/127\.0\.0\.1:\d+$/)
+    assert.equal((await fetch(state.url, { signal: AbortSignal.timeout(5000) })).status, 401)
+    const status = await (await fetch(`${state.url}${apiPrefix}/status`, { signal: AbortSignal.timeout(5000) })).json()
+    assert.equal(status.data.state, 'UNCONFIGURED')
+    // Host 就绪早于窗口 setup，等待原生初始化完成以捕获资源/图形运行时错误。
+    await delay(2000)
+    assert.equal(app.exitCode, null, 'Native application must remain alive after window setup')
+  } catch (error) {
+    const log = await readFile(join(home, 'desktop.log'), 'utf8').catch(() => '')
+    error.message += `\nNative output:\n${output}\nHarness log:\n${log.slice(-16000)}`
+    throw error
+  } finally {
+    if (app.pid && app.exitCode === null && app.signalCode === null) {
+      const exited = once(app, 'exit')
+      app.kill('SIGKILL')
+      await exited
+    }
+    if (state) {
+      const pids = [state.pid, state.launcherPid]
+      for (let attempt = 0; attempt < 200 && pids.some(isRunning); attempt++) await delay(100)
+      assert.ok(pids.every(pid => !isRunning(pid)), 'Application termination must reclaim launcher and Host')
+      await assert.rejects(fetch(state.url, { signal: AbortSignal.timeout(2000) }))
     }
     await rm(home, { recursive: true, force: true })
   }

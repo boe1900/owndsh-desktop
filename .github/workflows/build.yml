@@ -60,6 +60,7 @@ jobs:
         if: runner.os == 'macOS'
         env:
           OWNDSH_TEST_RUNTIME: ${{ github.workspace }}/dist/OwnDsh.app/Contents/Resources/runtime
+          OWNDSH_TEST_APP: ${{ github.workspace }}/dist/OwnDsh.app/Contents/MacOS/pake
         run: |
           codesign --verify --deep --strict dist/OwnDsh.app
           npm test
@@ -72,6 +73,7 @@ jobs:
           $setup = Start-Process $installer -ArgumentList "/S /D=$installDir" -Wait -PassThru
           if ($setup.ExitCode -ne 0) { throw "Installer exited $($setup.ExitCode)" }
           $env:OWNDSH_TEST_RUNTIME = Join-Path $installDir 'runtime'
+          $env:OWNDSH_TEST_APP = Join-Path $installDir 'pake.exe'
           npm test
       - uses: actions/upload-artifact@v4
         with:
