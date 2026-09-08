@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 Tauri 应用资源与用户目录、内置 Node launcher 的带官方启动凭证就绪协议
+ * [INPUT]: 依赖 Tauri 应用资源与用户目录、在资源工作目录启动的 Node launcher 就绪协议
  * [OUTPUT]: 提供 HarnessProcess 状态与有界启动/退出，进程 stdin 随窗口宿主崩溃自动关闭
  * [POS]: Pake 的最小本地服务适配，不向网页暴露执行任意命令的接口
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -26,14 +26,15 @@ impl HarnessProcess {
             None => app.path().app_data_dir()?.join("Harness"),
         };
         std::fs::create_dir_all(&home)?;
-        let node = if cfg!(windows) { "bin/node.exe" } else { "bin/node" };
-        let mut command = Command::new(runtime.join(node));
+        let node = if cfg!(windows) { "node.exe" } else { "node" };
+        let mut command = Command::new(runtime.join("bin").join(node));
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
             command.creation_flags(0x08000000); // CREATE_NO_WINDOW，托盘应用不创建控制台。
         }
-        let mut child = command.arg(runtime.join("launcher.mjs"))
+        // Node 入口不接收 Windows 的 verbatim 路径；工作目录交由原生进程 API 解析。
+        let mut child = command.current_dir(&runtime).arg("launcher.mjs")
             .env("DSH_HOME", &home)
             .env_remove("NODE_OPTIONS")
             .env_remove("NODE_PATH")

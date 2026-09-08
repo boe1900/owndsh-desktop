@@ -151,8 +151,7 @@ test('packaged runtime boots without system Node/pnpm and preserves user choices
     instance = undefined
   } catch (error) {
     const log = await readFile(join(home, 'desktop.log'), 'utf8').catch(() => '')
-    error.message += `\nHarness log:\n${log.slice(-16000)}`
-    throw error
+    throw new Error(`${error.message}\nHarness log:\n${log.slice(-16000)}`, { cause: error })
   } finally {
     if (instance?.child.exitCode === null) {
       const exited = once(instance.child, 'exit')
@@ -197,7 +196,7 @@ test('native application starts its bundled service and leaves no Host after ter
 }, async () => {
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh native app test '))
   const app = spawn(process.env.OWNDSH_TEST_APP, [], {
-    env: { ...environment, OWNDSH_DESKTOP_HOME: home }, stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...environment, RUST_BACKTRACE: '1', OWNDSH_DESKTOP_HOME: home }, stdio: ['ignore', 'pipe', 'pipe'],
   })
   let output = ''
   let launchError
@@ -225,8 +224,7 @@ test('native application starts its bundled service and leaves no Host after ter
     assert.deepEqual([app.exitCode, app.signalCode], [null, null], 'Native application must remain alive after window setup')
   } catch (error) {
     const log = await readFile(join(home, 'desktop.log'), 'utf8').catch(() => '')
-    error.message += `\nNative output:\n${output}\nHarness log:\n${log.slice(-16000)}`
-    throw error
+    throw new Error(`${error.message}\nNative output:\n${output}\nHarness log:\n${log.slice(-16000)}`, { cause: error })
   } finally {
     if (app.pid && app.exitCode === null && app.signalCode === null) {
       const exited = once(app, 'exit')

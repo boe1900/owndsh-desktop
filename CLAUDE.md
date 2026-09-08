@@ -13,7 +13,7 @@ package.json / package-lock.json - 构建工具依赖与 build/prepare:runtime/t
 build.mjs - 生成 Pake 副本、平台图标、运行树与 DMG/NSIS 包，不读取兄弟仓库
 launcher.mjs - 离线播种用户 profile，同步桌面自管链接与 pnpm 的发行版本，启动回环 Host 并管理进程/脱敏日志
 windows-job.mjs - 使用 Harness 已安装的 koffi 创建 Windows Job，launcher 退出即回收后代
-host.rs - Tauri setup/exit 适配，校验启动 URL，通过 stdin 管理 launcher 生命周期
+host.rs - Tauri setup/exit 适配，从内置资源工作目录启动相对脚本以兼容 Windows verbatim 路径，校验 URL 并通过 stdin 管理生命周期
 launcher.test.mjs - 带空格路径、最小 PATH、启动/持久化/WebSocket/退出测试；Windows 验证 Job，OWNDSH_TEST_APP 验证实际原生入口及宿主结束回收
 README.md - 使用、数据、构建、发布和平台验证边界
 LICENSE / LICENSE-EXCEPTION - Pake GPL-3.0-or-later 与上游例外声明
