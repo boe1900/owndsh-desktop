@@ -22,6 +22,6 @@ LICENSE / LICENSE-EXCEPTION - Pake GPL-3.0-or-later 与上游例外声明
 
 桌面层只拥有窗口、图标、托盘和服务生命周期。Web UI/工具属于官方 Harness，认证/企业能力属于独立插件；不复制两者业务源码，不内置 Server 地址或用户凭据。
 
-运行依赖从 npm 获取并锁定 integrity；预发布 peer 的显式覆盖只统一到实际验收的 Harness 版本，禁止安装第二套 Host 单例依赖。升级时更新 runtime 清单和锁，三平台真实运行测试必须通过。
+运行依赖从 npm 获取并锁定 integrity，直接遵循插件对官方 Harness 的兼容 peer 声明，禁止安装第二套 Host 单例依赖。升级时更新 runtime 清单和锁，三平台真实运行测试必须通过。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

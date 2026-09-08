@@ -6,16 +6,6 @@
   "dependencies": {
     "@deepseek-ai/dsh": "0.1.2-rc.1",
     "pnpm": "11.26.0",
-    "owndsh-plugin": "0.1.0-beta.2"
-  },
-  "overrides": {
-    "owndsh-plugin": {
-      "@deepseek-ai/dsh-credentials": "0.1.2-rc.1",
-      "@deepseek-ai/dsh-host-plugin-inventory": "0.1.2-rc.1",
-      "@deepseek-ai/dsh-llm": "0.1.2-rc.1",
-      "@deepseek-ai/dsh-llm-pi-ai": "0.1.2-rc.1",
-      "@deepseek-ai/dsh-settings": "0.1.2-rc.1",
-      "@deepseek-ai/dsh-subprocess": "0.1.2-rc.1"
-    }
+    "owndsh-plugin": "0.1.0-beta.3"
   }
 }
