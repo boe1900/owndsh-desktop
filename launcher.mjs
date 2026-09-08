@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖随包 Node/Harness/pnpm、用户可写 DSH_HOME 与父进程 stdin 生命周期
- * [OUTPUT]: 离线初始化官方 web profile，经 stdout 交付带官方启动凭证的回环地址，按 POSIX 进程组/Windows Job 回收后代
+ * [OUTPUT]: 离线初始化并升级桌面自管 profile，经 stdout 交付官方启动地址，按 POSIX 进程组/Windows Job 回收后代
  * [POS]: Pake 与官方 CLI 之间的启动边界；不修改官方 Web，不保存服务器地址或凭据
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -56,6 +56,12 @@ if (manifest === undefined) {
 const seedPath = join(profile, '.owndsh-seed.json')
 const previousSeed = await readJson(seedPath) ?? {}
 const seed = { ...previousSeed }
+let manifestChanged = false
+const packageManager = `pnpm@${installed.dependencies.pnpm}`
+if (manifest.name === 'owndsh-desktop-web' && manifest.packageManager !== packageManager) {
+  manifest.packageManager = packageManager
+  manifestChanged = true
+}
 for (const name of bundledNames) {
   if (!manifest.dependencies?.[name]) continue
   const path = join(profile, 'node_modules', name)
@@ -71,7 +77,13 @@ for (const name of bundledNames) {
     await symlink(target, path, windows ? 'junction' : 'dir')
   }
   seed[name] = await readlink(path)
+  const version = (await readJson(join(target, 'package.json'))).version
+  if (manifest.dependencies[name] !== version) {
+    manifest.dependencies[name] = version
+    manifestChanged = true
+  }
 }
+if (manifestChanged) await atomicJson(manifestPath, manifest)
 await atomicJson(seedPath, seed)
 
 let loginPath = process.env.PATH ?? '/usr/bin:/bin:/usr/sbin:/sbin'
@@ -118,9 +130,9 @@ function signalGroup(signal) {
 function stop() {
   if (stopping) return
   stopping = true
-  signalGroup('SIGTERM')
   killTimer = setTimeout(() => signalGroup('SIGKILL'), 7000)
   killTimer.unref()
+  signalGroup('SIGTERM')
 }
 process.once('SIGTERM', stop)
 process.once('SIGINT', stop)

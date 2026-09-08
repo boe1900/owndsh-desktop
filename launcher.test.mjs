@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖准备后的真实内置 Node/Harness/OwnDsh 与临时用户目录，不依赖开发机的 dsh/pnpm
- * [OUTPUT]: 验证离线播种、WebSocket、Server 持久化/单次恢复收敛、父进程断开清理与用户卸载不复活
+ * [OUTPUT]: 验证离线播种/版本升级、WebSocket、Server 持久化、退出回收与用户卸载不复活
  * [POS]: desktop 的最小真实进程回归，可同样指向安装包中的 runtime
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -112,7 +112,16 @@ test('packaged runtime boots without system Node/pnpm and preserves user choices
     assert.equal(saved.status, 200)
     await stop(instance, home)
     instance = undefined
+    const manifestPath = join(home, 'profiles/web/package.json')
+    const prior = JSON.parse(await readFile(manifestPath, 'utf8'))
+    prior.dependencies['owndsh-plugin'] = '0.0.0'
+    prior.packageManager = 'pnpm@0.0.0'
+    await writeFile(manifestPath, JSON.stringify(prior))
     instance = await start(home)
+    const upgraded = JSON.parse(await readFile(manifestPath, 'utf8'))
+    const bundledPlugin = JSON.parse(await readFile(join(runtime, 'node_modules/owndsh-plugin/package.json'), 'utf8'))
+    assert.equal(upgraded.dependencies['owndsh-plugin'], bundledPlugin.version)
+    assert.equal(upgraded.packageManager, `pnpm@${versions.pnpm}`)
     let restored
     for (let attempt = 0; attempt < 100; attempt++) {
       restored = await (await fetch(`${instance.url}${apiPrefix}/status`)).json()
@@ -124,7 +133,6 @@ test('packaged runtime boots without system Node/pnpm and preserves user choices
     await stop(instance, home)
     instance = undefined
 
-    const manifestPath = join(home, 'profiles/web/package.json')
     const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
     delete manifest.dependencies['owndsh-plugin']
     manifest.dsh.profile.bundles = manifest.dsh.profile.bundles.filter(name => name !== 'owndsh-plugin')

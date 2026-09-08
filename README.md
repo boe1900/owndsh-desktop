@@ -25,7 +25,7 @@ macOS 配置最低 13.5，采用 ad-hoc 签名，尚无 Developer ID 公证；Wi
 - macOS：`~/Library/Application Support/com.owndsh.desktop/Harness/`
 - Windows：`%APPDATA%\com.owndsh.desktop\Harness\`
 
-升级应用保留配置、凭据与 profile，不覆盖 `~/.dsh`。用户自行替换、安装或显式卸载的插件保持用户所有权；启动器只维护自己播种的依赖链接。日志 `desktop.log` 不记录启动 token；`desktop-runtime.json` 仅记录当前进程与不含 token 的回环地址。`OWNDSH_DESKTOP_HOME` 可指定隔离测试目录。
+升级应用保留配置、凭据与 profile，不覆盖 `~/.dsh`。用户自行替换、安装或显式卸载的插件保持用户所有权；启动器只维护自己播种的依赖链接，并同步其 manifest 版本，防止后续安装其他插件时拉回旧版。日志 `desktop.log` 不记录启动 token；`desktop-runtime.json` 仅记录当前进程与不含 token 的回环地址。`OWNDSH_DESKTOP_HOME` 可指定隔离测试目录。
 
 Harness 以当前用户身份运行，桌面层不额外限制 CPU、内存、工具进程数量或运行时长。Git、Python、Docker、编译器和其他 MCP 依赖按项目需要另行安装；工具审批与平台文件授权沿用现有机制。企业模型授权和配额由 OwnDsh Server 决定。
 
