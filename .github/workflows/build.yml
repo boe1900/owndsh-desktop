@@ -1,0 +1,107 @@
+# [INPUT]: npm 双锁、Pake Cargo.lock 和目标 OS/架构原生构建机。
+# [OUTPUT]: 三平台安装包、版本与校验清单；v 标签产生草稿 Release。
+# [POS]: 独立桌面发行入口，不 checkout 插件/服务端源码。
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+name: Build desktop
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-x64
+            os: macos-15-intel
+            arch: x64
+          - name: macos-arm64
+            os: macos-15
+            arch: arm64
+          - name: windows-x64
+            os: windows-2022
+            arch: x64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.1
+          architecture: ${{ matrix.arch }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            runtime/package-lock.json
+      - name: Install dependencies
+        run: |
+          npm ci --ignore-scripts
+          npm ci --prefix runtime --ignore-scripts
+          rustup toolchain install 1.95.0 --profile minimal
+          rustup default 1.95.0
+      - name: Prepare runtime
+        run: npm run prepare:runtime
+      - name: Verify bundled runtime
+        run: npm test
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .build/pake/src-tauri
+          cache-on-failure: true
+      - name: Build installer
+        run: npm run build
+      - name: Verify macOS packaged runtime and signature
+        if: runner.os == 'macOS'
+        env:
+          OWNDSH_TEST_RUNTIME: ${{ github.workspace }}/dist/OwnDsh.app/Contents/Resources/runtime
+        run: |
+          codesign --verify --deep --strict dist/OwnDsh.app
+          npm test
+      - name: Verify Windows installed runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem dist/*-setup.exe).FullName
+          $installDir = Join-Path $env:RUNNER_TEMP 'OwnDsh install test'
+          $setup = Start-Process $installer -ArgumentList "/S /D=$installDir" -Wait -PassThru
+          if ($setup.ExitCode -ne 0) { throw "Installer exited $($setup.ExitCode)" }
+          $env:OWNDSH_TEST_RUNTIME = Join-Path $installDir 'runtime'
+          npm test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OwnDsh-${{ matrix.name }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.json
+            dist/*.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          node -e "const p=require('./package.json'); if ('v'+p.version!==process.env.RELEASE_TAG) throw Error('Tag must match package.json version')"
+          gh release create "$RELEASE_TAG" dist/* --verify-tag --draft --title "OwnDsh $RELEASE_TAG" --generate-notes
