@@ -207,7 +207,7 @@ test('native application starts its bundled service and leaves no Host after ter
   try {
     for (let attempt = 0; attempt < 180; attempt++) {
       if (launchError) throw launchError
-      assert.equal(app.exitCode, null, 'Native application exited during startup')
+      assert.deepEqual([app.exitCode, app.signalCode], [null, null], 'Native application exited during startup')
       state = await readFile(join(home, 'desktop-runtime.json'), 'utf8').then(JSON.parse).catch(error => {
         if (error.code === 'ENOENT') return undefined
         throw error
@@ -222,7 +222,7 @@ test('native application starts its bundled service and leaves no Host after ter
     assert.equal(status.data.state, 'UNCONFIGURED')
     // Host 就绪早于窗口 setup，等待原生初始化完成以捕获资源/图形运行时错误。
     await delay(2000)
-    assert.equal(app.exitCode, null, 'Native application must remain alive after window setup')
+    assert.deepEqual([app.exitCode, app.signalCode], [null, null], 'Native application must remain alive after window setup')
   } catch (error) {
     const log = await readFile(join(home, 'desktop.log'), 'utf8').catch(() => '')
     error.message += `\nNative output:\n${output}\nHarness log:\n${log.slice(-16000)}`
