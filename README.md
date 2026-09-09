@@ -18,7 +18,7 @@ Mac 打开 DMG 后拖入 Applications；Windows 运行安装程序。打开应�
 
 用户无需另装 Node、pnpm 或 Harness，首次 profile 创建使用随包资源。Windows 使用系统 WebView2；缺失时安装程序通过内置官方 bootstrapper 联网安装。登录、模型调用及额外插件下载仍需要网络。
 
-关闭窗口会隐藏到托盘，正在运行的任务保留。托盘左键切换窗口、右键显示菜单；选“退出 OwnDsh”完全退出并回收 Host，Mac 也支持 Cmd+Q。Mac 图标带圆角透明留白，菜单栏使用随明暗主题变化的模板图。
+关闭窗口会隐藏到托盘，正在运行的任务保留。托盘左键切换窗口、右键显示菜单；选“退出 OwnDsh”完全退出并回收 Host，Mac 也支持 Cmd+Q。Mac 图标带圆角透明留白，菜单栏使用随明暗主题变化的模板图；Windows ICO 的圆角图案占满画布，避免在桌面和任务栏额外缩小。
 
 macOS 配置最低 13.5，采用 ad-hoc 签名，尚无 Developer ID 公证；Windows 安装包尚无 Authenticode 签名。系统可能要求允许打开。构建/运行自动验证不等于所有系统版本的原生 UI 人工验收。
 

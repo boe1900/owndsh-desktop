@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 npm 锁定 Pake/Harness/插件、仓库品牌资源与目标平台 Node/Rust 工具链
- * [OUTPUT]: 生成带内置运行环境的 macOS DMG 或 Windows NSIS 安装包、版本清单与 SHA-256
+ * [OUTPUT]: 生成平台专用图标、带内置运行环境的 DMG/NSIS 安装包、版本清单与 SHA-256
  * [POS]: 独立桌面仓库的发行编排器，仅在 .build/dist 生成第三方副本
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -122,13 +122,16 @@ await json(join(stage, 'package.json'), { name: 'owndsh-pake-build', version: ma
 
 const tauri = (args, cwd = root) => run(process.execPath, [join(root, 'node_modules/@tauri-apps/cli/tauri.js'), ...args], cwd)
 const brandIcon = join(root, 'assets/icon.png')
-const appIcon = join(stage, 'icon-macos.png')
+const appIcon = join(stage, windows ? 'icon-windows.png' : 'icon-macos.png')
 // 沿用 Pake 3.16.1 的 macOS mask 尺寸；CLI 未导出该图像处理函数。
 const mask = Buffer.from('<svg width="1024" height="1024"><rect width="1024" height="1024" rx="224" fill="white"/></svg>')
 const rounded = await sharp(brandIcon).resize(1024, 1024).ensureAlpha()
   .composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer()
-await sharp(rounded).resize(840, 840)
-  .extend({ top: 92, bottom: 92, left: 92, right: 92, background: '#00000000' }).png().toFile(appIcon)
+// Mac Dock 需要外侧留白；Windows ICO 使用完整画布，避免桌面和任务栏图标偏小。
+const appImage = sharp(rounded)
+if (!windows) appImage.resize(840, 840)
+  .extend({ top: 92, bottom: 92, left: 92, right: 92, background: '#00000000' })
+await appImage.png().toFile(appIcon)
 tauri(['icon', appIcon, '--output', join(tauriRoot, 'icons')])
 // 黑底白图的亮度直接转为 alpha，让 macOS 自动适配明暗菜单栏。
 const silhouette = await sharp(brandIcon).resize(32, 32).greyscale().raw().toBuffer()

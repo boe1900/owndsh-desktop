@@ -10,7 +10,7 @@ runtime/ - 官方 Harness、OwnDsh 插件与 pnpm 的独立 npm 精确版本锁
 
 <config>
 package.json / package-lock.json - 构建工具依赖与 build/prepare:runtime/test 入口
-build.mjs - 生成 Pake 副本、平台图标、运行树与 DMG/NSIS 包，不读取兄弟仓库
+build.mjs - 生成 Pake 副本、Mac 留白/Windows 满幅圆角图标、运行树与 DMG/NSIS 包，不读取兄弟仓库
 launcher.mjs - 离线播种用户 profile，同步桌面自管链接与 pnpm 的发行版本，启动回环 Host 并管理进程/脱敏日志
 windows-job.mjs - 使用 Harness 已安装的 koffi 创建 Windows Job，launcher 退出即回收后代
 host.rs - Tauri setup/exit 适配，从内置资源工作目录启动相对脚本以兼容 Windows verbatim 路径，校验 URL 并通过 stdin 管理生命周期
