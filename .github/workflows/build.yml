@@ -1,5 +1,5 @@
 # [INPUT]: npm 双锁、Pake Cargo.lock 和目标 OS/架构原生构建机。
-# [OUTPUT]: 三平台安装包、版本与校验清单；v 标签产生草稿 Release。
+# [OUTPUT]: 三平台运行环境/真实卸载验收、安装包、版本与校验清单；v 标签产生草稿 Release。
 # [POS]: 独立桌面发行入口，不 checkout 插件/服务端源码。
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 name: Build desktop
@@ -50,6 +50,8 @@ jobs:
           rustup default 1.95.0
       - name: Prepare runtime
         run: npm run prepare:runtime
+      - name: Verify runtime before packaging
+        run: npm test
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: .build/pake/src-tauri

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖 npm 锁定 Pake/Harness/插件、仓库品牌资源与目标平台 Node/Rust 工具链
- * [OUTPUT]: 生成平台专用图标、带内置运行环境的 DMG/NSIS 安装包、版本清单与 SHA-256
+ * [OUTPUT]: 生成平台专用图标、原生 Windows dsh 命令入口、DMG/NSIS 安装包、版本清单与 SHA-256
  * [POS]: 独立桌面仓库的发行编排器，仅在 .build/dist 生成第三方副本
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -45,6 +45,11 @@ for (const [name, entry] of [
   ['pnpm', 'pnpm/bin/pnpm.cjs'],
 ]) {
   if (windows) {
+    if (name === 'dsh') {
+      run('rustc', ['--edition=2021', '-C', 'opt-level=s', '-C', 'strip=symbols',
+        join(root, 'dsh-cli.rs'), '-o', join(runtime, 'bin', 'dsh.exe')])
+      continue
+    }
     await writeFile(join(runtime, 'bin', `${name}.cmd`), `@echo off\r\n"%~dp0node.exe" "%~dp0..\\node_modules\\${entry.replaceAll('/', '\\')}" %*\r\n`)
     continue
   }

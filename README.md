@@ -18,6 +18,8 @@ Mac 打开 DMG 后拖入 Applications；Windows 运行安装程序。打开应�
 
 用户无需另装 Node、pnpm 或 Harness，首次 profile 创建使用随包资源。Windows 使用系统 WebView2；缺失时安装程序通过内置官方 bootstrapper 联网安装。登录、模型调用及额外插件下载仍需要网络。
 
+未登录时也可在欢迎页卸载 OwnDsh 插件，退出并重新打开应用后进入官方 Harness；这不卸载桌面应用。Windows 随包提供原生 `dsh.exe`，供官方子进程接口直接调用，再转交内置 Node 与官方 CLI 执行插件安装/卸载。
+
 关闭窗口会隐藏到托盘，正在运行的任务保留。托盘左键切换窗口、右键显示菜单；选“退出 OwnDsh”完全退出并回收 Host，Mac 也支持 Cmd+Q。Mac 图标带圆角透明留白，菜单栏使用随明暗主题变化的模板图；Windows ICO 的圆角图案占满画布，避免在桌面和任务栏额外缩小。
 
 macOS 配置最低 13.5，采用 ad-hoc 签名，尚无 Developer ID 公证；Windows 安装包尚无 Authenticode 签名。系统可能要求允许打开。构建/运行自动验证不等于所有系统版本的原生 UI 人工验收。
@@ -45,7 +47,7 @@ npm run build
 
 构建输出位于 `dist/`，缓存位于 `.build/`。不需要 checkout 或构建 OwnDsh 插件仓库，也不读取本机账号。`runtime/package.json` 和双层 npm lock 固定发行内容；不要将浮动 `latest` 直接写入依赖。Pake 源码与其 Cargo.lock 来自锁定 npm 包，桌面 hook 只修改生成副本，上游接缝变化时构建立即失败。
 
-运行测试使用带空格的临时目录与不含系统 Node/pnpm 的 PATH，验证内置命令、首次空配置、官方 Cookie/WebSocket、Server 持久化、退出回收和卸载不复活；Windows 额外验证强杀 launcher 后无 Host 遗留。Mac 构建后对 `.app` 内实际 runtime 复测并验证签名，Windows 静默安装到带空格路径后复测实际安装内容。插件认证、页面确认框和插件市场的业务测试保留在插件仓库，可通过 `OWNDSH_TEST_RUNTIME` 显式指向本仓库准备的运行树。
+运行测试使用带空格的临时目录与不含系统 Node/pnpm 的 PATH，验证内置命令、首次空配置、官方 Cookie/WebSocket、Server 持久化、退出回收，以及未登录调用真实卸载 API 后重启不复活；Windows 额外验证强杀 launcher 后无 Host 遗留。Mac 构建后对 `.app` 内实际 runtime 复测并验证签名，Windows 静默安装到带空格路径后复测实际安装内容。插件认证、页面确认框和插件市场的业务测试保留在插件仓库，可通过 `OWNDSH_TEST_RUNTIME` 显式指向本仓库准备的运行树。
 
 CI 同时通过 `OWNDSH_TEST_APP` 启动实际原生程序，验证壳能启动随包服务、完成窗口初始化，并在原生宿主被终止后回收 launcher 和 Host。该检查使用隔离数据目录；本地默认跳过，显式启用前应完全退出其他 OwnDsh 实例，避免单实例机制接管测试启动。
 

@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖真实随包运行环境、可选 OWNDSH_TEST_APP 原生入口与临时用户目录
- * [OUTPUT]: 验证离线播种/升级、WebSocket、配置持久化、卸载保留，以及原生壳启动与进程回收
+ * [OUTPUT]: 验证离线播种/升级、WebSocket、配置持久化、真实未登录卸载及重启不复活、原生壳启动与进程回收
  * [POS]: desktop 的最小真实进程回归，可同样指向安装包中的 runtime
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -84,8 +84,8 @@ test('packaged runtime boots without system Node/pnpm and preserves user choices
   let instance
   try {
     for (const [command, dependency] of [['dsh', '@deepseek-ai/dsh'], ['pnpm', 'pnpm']]) {
-      const wrapper = join(runtime, 'bin', windows ? `${command}.cmd` : command)
-      const version = windows
+      const wrapper = join(runtime, 'bin', windows ? `${command}.${command === 'dsh' ? 'exe' : 'cmd'}` : command)
+      const version = windows && command === 'pnpm'
         ? execFileSync(environment.ComSpec, ['/d', '/s', '/c', `""${wrapper}" --version"`], { env: environment, encoding: 'utf8', windowsVerbatimArguments: true })
         : execFileSync(wrapper, ['--version'], { env: environment, encoding: 'utf8' })
       assert.equal(version.trim(), versions[dependency])
@@ -147,6 +147,47 @@ test('packaged runtime boots without system Node/pnpm and preserves user choices
     instance = await start(home)
     const after = JSON.parse(await readFile(manifestPath, 'utf8'))
     assert.equal(after.dependencies['owndsh-plugin'], undefined)
+    await stop(instance, home)
+    instance = undefined
+  } catch (error) {
+    const log = await readFile(join(home, 'desktop.log'), 'utf8').catch(() => '')
+    throw new Error(`${error.message}\nHarness log:\n${log.slice(-16000)}`, { cause: error })
+  } finally {
+    if (instance?.child.exitCode === null) {
+      const exited = once(instance.child, 'exit')
+      instance.child.stdin.end()
+      await exited
+    }
+    await rm(home, { recursive: true, force: true })
+  }
+})
+
+test('unconfigured user can uninstall OwnDsh through its API and restart without it', { timeout: 180000 }, async () => {
+  const home = await mkdtemp(join(tmpdir(), 'OwnDsh uninstall test '))
+  let instance
+  try {
+    instance = await start(home)
+    const status = await (await fetch(`${instance.url}${apiPrefix}/status`)).json()
+    assert.equal(status.data.state, 'UNCONFIGURED')
+    assert.equal(status.data.platformUrl, null)
+    const response = await fetch(`${instance.url}${apiPrefix}/uninstall`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+      signal: AbortSignal.timeout(90000),
+    })
+    const result = await response.json()
+    assert.equal(response.status, 200, JSON.stringify(result))
+    assert.deepEqual(result.data, { uninstalled: true, restartRequested: false })
+    await stop(instance, home)
+    instance = undefined
+    instance = await start(home)
+    const manifest = JSON.parse(await readFile(join(home, 'profiles/web/package.json'), 'utf8'))
+    assert.equal(manifest.dependencies['owndsh-plugin'], undefined)
+    assert.ok(!manifest.dsh.profile.bundles.includes('owndsh-plugin'))
+    const exchange = await fetch(instance.launchUrl, { redirect: 'manual' })
+    const cookie = exchange.headers.get('set-cookie').split(';')[0]
+    const html = await (await fetch(instance.url, { headers: { cookie } })).text()
+    assert.match(html, /<html/)
+    assert.doesNotMatch(html, /owndsh-plugin/)
     await stop(instance, home)
     instance = undefined
   } catch (error) {
