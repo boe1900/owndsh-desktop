@@ -1,6 +1,6 @@
 # OwnDsh Desktop - 官方 Harness 与 OwnDsh 插件的独立桌面发行
 
-Pake 3.16.1 + Tauri 2 + Node 24.14.1 + Harness 0.1.2-rc.1 + npm 锁定插件
+Pake 3.16.1 + Tauri 2 + Node 24.14.1 + Harness 0.1.5-rc.2 + npm 锁定插件 0.1.0
 
 <directory>
 .github/ - 原生 macOS Intel/ARM、Windows x64 构建与标签草稿发布

@@ -2,7 +2,7 @@
 
 用 Pake 封装官方 DeepSeek Harness Web，预装 `owndsh-plugin`。本仓库只负责桌面窗口、托盘、内置运行环境和安装包；企业插件及服务端在 [owndsh](https://github.com/boe1900/owndsh) 独立维护。
 
-当前锁定 Pake 3.16.1、Harness 0.1.2-rc.1、OwnDsh 插件 0.1.0-beta.3、Node 24.14.1 与 pnpm 11.26.0。
+当前锁定 Pake 3.16.1、Harness 0.1.5-rc.2、OwnDsh 插件 0.1.0、Node 24.14.1 与 pnpm 11.26.0。
 
 ## 安装与使用
 
