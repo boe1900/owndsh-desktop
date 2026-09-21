@@ -9,7 +9,7 @@
   "scripts": {
     "prepare:runtime": "node build.mjs --prepare-only",
     "build": "node build.mjs",
-    "test": "node --test launcher.test.mjs"
+    "test": "node --test launcher.test.mjs web-compat.test.mjs"
   },
   "devDependencies": {
     "pake-cli": "3.16.1"

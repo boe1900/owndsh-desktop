@@ -4,6 +4,8 @@
 
 当前锁定 Pake 3.16.1、Harness 0.1.5-rc.2、OwnDsh 插件 0.1.0-beta.7、Node 24.14.1 与 pnpm 11.26.0。
 
+桌面壳为 macOS WKWebView 补齐官方文档预览依赖的 Iterator Helpers；PDF worker 也使用同一兼容层，避免系统 WebKit 因缺少全局 `Iterator` 在加载阶段失败。
+
 ## 安装与使用
 
 | 系统 | 安装包 | 原生构建机 |

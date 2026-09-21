@@ -1,5 +1,5 @@
 /**
- * [INPUT]: 依赖 npm 锁定 Pake/Harness/插件、仓库品牌资源与目标平台 Node/Rust 工具链
+ * [INPUT]: 依赖 npm 锁定 Pake/Harness/插件、桌面 WebKit 兼容脚本与目标平台 Node/Rust 工具链
  * [OUTPUT]: 生成平台专用图标、原生 Windows dsh 命令入口、DMG/NSIS 安装包、版本清单与 SHA-256
  * [POS]: 独立桌面仓库的发行编排器，仅在 .build/dist 生成第三方副本
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -28,6 +28,7 @@ assert.equal(process.version, 'v24.14.1', 'Build with Node 24.14.1 so the embedd
 
 await mkdir(stage, { recursive: true })
 await cp(join(root, 'node_modules', 'pake-cli', 'src-tauri'), tauriRoot, { recursive: true, verbatimSymlinks: true })
+await cp(join(root, 'web-compat.js'), join(tauriRoot, 'src/inject/compat.js'))
 await rm(runtime, { recursive: true, force: true })
 await mkdir(runtime, { recursive: true })
 await cp(join(root, 'runtime', 'node_modules'), join(runtime, 'node_modules'), { recursive: true, verbatimSymlinks: true })
@@ -39,6 +40,15 @@ await mkdir(join(runtime, 'bin'), { recursive: true })
 await cp(process.execPath, join(runtime, 'bin', windows ? 'node.exe' : 'node'))
 await chmod(join(runtime, 'bin', windows ? 'node.exe' : 'node'), 0o755)
 await cp(join(root, 'assets/NODE-LICENSE'), join(runtime, 'NODE-LICENSE'))
+
+// PDF.js runs its worker from a Blob, outside Tauri's document initialization scripts.
+// Prepend the same compatibility layer to that worker while preserving the npm package lock.
+const previewBundle = join(runtime, 'node_modules/@deepseek-ai/dsh-client-ui-sidebar-documentpreview/lib/client.js')
+const previewSource = await readFile(previewBundle, 'utf8')
+const workerMarker = 'var _dsh_pdf_worker_default = "'
+assert.equal(previewSource.split(workerMarker).length, 2, 'document preview worker bundle changed')
+const compatSource = await readFile(join(root, 'web-compat.js'), 'utf8')
+await writeFile(previewBundle, previewSource.replace(workerMarker, `var _dsh_pdf_worker_default = ${JSON.stringify(`${compatSource}\n`)} + "`))
 
 for (const [name, entry] of [
   ['dsh', '@deepseek-ai/dsh/lib/bin.js'],
@@ -99,6 +109,13 @@ for (const [before, after] of replacements) {
   rust = rust.replace(before, after)
 }
 await writeFile(join(tauriRoot, 'src', 'lib.rs'), rust)
+
+const windowPath = join(tauriRoot, 'src/app/window.rs')
+let windowSource = await readFile(windowPath, 'utf8')
+const windowMarker = '.initialization_script_for_all_frames(&config_script)'
+assert.equal(windowSource.split(windowMarker).length, 2, `Pake hook changed: ${windowMarker}`)
+windowSource = windowSource.replace(windowMarker, `${windowMarker}\n        .initialization_script_for_all_frames(include_str!("../inject/compat.js"))`)
+await writeFile(windowPath, windowSource)
 
 const setupPath = join(tauriRoot, 'src/app/setup.rs')
 let setup = await readFile(setupPath, 'utf8')
