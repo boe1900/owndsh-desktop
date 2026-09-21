@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 依赖随包 Node/Harness/pnpm、用户可写 DSH_HOME 与父进程 stdin 生命周期
- * [OUTPUT]: 离线初始化并升级桌面自管 profile，经 stdout 交付官方启动地址，按 POSIX 进程组/Windows Job 回收后代
+ * [OUTPUT]: 恢复陈旧凭据锁，离线初始化并升级桌面自管 profile，经 stdout 交付官方启动地址，按 POSIX 进程组/Windows Job 回收后代
  * [POS]: Pake 与官方 CLI 之间的启动边界；不修改官方 Web，不保存服务器地址或凭据
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -31,6 +31,36 @@ async function atomicJson(path, value) {
   await rename(temporary, path)
 }
 
+async function recoverStaleCredentialLock() {
+  const lockPath = join(dshHome, '.credentials.yaml.lock')
+  let content
+  try {
+    content = (await readFile(lockPath, 'utf8')).trim()
+  } catch (error) {
+    if (error.code === 'ENOENT') return
+    throw error
+  }
+  if (!/^\d+$/.test(content)) return
+  const pid = Number(content)
+  if (!Number.isSafeInteger(pid) || pid <= 0) return
+  try {
+    process.kill(pid, 0)
+    return
+  } catch (error) {
+    if (error.code !== 'ESRCH') return
+  }
+  // 二次读取避免在检查期间文件被其他进程替换；活跃锁永远不主动删除。
+  try {
+    if ((await readFile(lockPath, 'utf8')).trim() !== content) return
+    await unlink(lockPath)
+    process.stderr.write(`Removed stale credential lock for exited PID ${pid}\n`)
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
+}
+
+await mkdir(dshHome, { recursive: true })
+await recoverStaleCredentialLock()
 const profile = join(dshHome, 'profiles', 'web')
 await mkdir(join(profile, 'node_modules', '@deepseek-ai'), { recursive: true })
 await mkdir(join(dshHome, 'workspace'), { recursive: true })

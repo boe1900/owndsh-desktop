@@ -83,6 +83,7 @@ test('packaged runtime boots without system Node/pnpm and preserves user choices
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh desktop test '))
   let instance
   try {
+    await writeFile(join(home, '.credentials.yaml.lock'), '999999999\n')
     for (const [command, dependency] of [['dsh', '@deepseek-ai/dsh'], ['pnpm', 'pnpm']]) {
       const wrapper = join(runtime, 'bin', windows ? `${command}.${command === 'dsh' ? 'exe' : 'cmd'}` : command)
       const version = windows && command === 'pnpm'
@@ -91,6 +92,7 @@ test('packaged runtime boots without system Node/pnpm and preserves user choices
       assert.equal(version.trim(), versions[dependency])
     }
     instance = await start(home)
+    await assert.rejects(readFile(join(home, '.credentials.yaml.lock')))
     const status = await (await fetch(`${instance.url}${apiPrefix}/status`)).json()
     assert.equal(status.data.state, 'UNCONFIGURED')
     assert.equal(status.data.platformUrl, null)
