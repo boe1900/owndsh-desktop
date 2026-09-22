@@ -37,7 +37,7 @@ npm run build
 npm test
 ```
 
-`dist/electron/` 生成 DMG 或 NSIS EXE，以及包含官方 commit、实际版本、禁用更新状态的 `build-info-*.json` 和 SHA-256。`npm run prepare:runtime` 只准备并校验运行树。`npm run test:app` 通过 `OWNDSH_TEST_APP` 指定实际打包程序，用隔离目录验证启动、原生终端、Server 保存、未登录卸载和重启。
+`dist/electron/` 生成 DMG 或 NSIS EXE，以及包含官方 commit、实际版本、禁用更新状态的 `build-info-*.json` 和 SHA-256。`npm run prepare:runtime` 只准备并校验运行树。安装包在原生签名后更新最终运行树清单。`npm run test:app` 通过 `OWNDSH_TEST_APP` 指定实际打包程序，用隔离目录验证完整性、启动、原生模块、Word 转 PDF、Server 保存、未登录卸载和重启。
 
 三平台 GitHub Actions 在实验分支 push、PR 或手动触发，成功后提供 Artifacts。实验分支不自动创建 Release，不覆盖现有 Pake 包。应用体积包含 Electron 和官方 Python/Office 运行环境。
 

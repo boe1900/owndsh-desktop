@@ -113,7 +113,7 @@ await compile(join(sourceDesktop, 'src/runtime-tree.ts'), runtimeTools)
 const { writeDesktopRuntime, verifyDesktopRuntime } = await import(pathToFileURL(runtimeTools))
 const { DESKTOP_HOST_PROTOCOL_VERSION } = await import(pathToFileURL(join(sourceDesktop, 'src/host-protocol.ts')))
 // 单一 npm 树放在 app 根；官方主进程和私有 Host 都使用它，避免复制单例包。
-writeDesktopRuntime(app, { schemaVersion: 1, version: manifest.version, hostProtocolVersion: DESKTOP_HOST_PROTOCOL_VERSION,
+const descriptor = writeDesktopRuntime(app, { schemaVersion: 1, version: manifest.version, hostProtocolVersion: DESKTOP_HOST_PROTOCOL_VERSION,
   nodeVersion, pnpmVersion: runtimeManifest.dependencies.pnpm }, sharedNames)
 await verifyDesktopRuntime(app, manifest.version)
 await mkdir(output, { recursive: true })
@@ -133,6 +133,11 @@ if (process.argv.includes('--prepare-only')) {
   process.stdout.write(`Prepared official Desktop at ${app}\n`)
 } else {
   const { build: packageApp, Platform } = await import('electron-builder')
+  const sealPackage = async context => {
+    const runtime = join(context.packager.getResourcesDir(context.appOutDir), 'app')
+    writeDesktopRuntime(runtime, descriptor.release, sharedNames)
+    await verifyDesktopRuntime(runtime, manifest.version)
+  }
   const artifacts = await packageApp({
     targets: (windows ? Platform.WINDOWS : Platform.MAC).createTarget(windows ? 'nsis' : 'dmg'),
     publish: 'never',
@@ -148,6 +153,15 @@ if (process.argv.includes('--prepare-only')) {
       asar: false,
       extraResources: [{ from: resources, to: 'runtime' }, { from: icon, to: 'icon.png' }],
       publish: null,
+      afterPack: async context => { if (windows) await sealPackage(context) },
+      afterSign: async context => {
+        if (windows) return
+        // 原生签名会改变文件字节；更新最终清单后重新封印外层 App。
+        await sealPackage(context)
+        const bundle = join(context.appOutDir, 'OwnDsh Electron.app')
+        run('codesign', ['--force', '--sign', '-', '--preserve-metadata=entitlements', bundle])
+        run('codesign', ['--verify', '--deep', '--strict', bundle])
+      },
       mac: { icon, identity: '-', hardenedRuntime: false, notarize: false, category: 'public.app-category.developer-tools',
         // 上游只携带 LibreOffice 库，非完整 App；内部 Mach-O 仍逐个签名。
         signIgnore: ['LibreOfficeDev\\.app$'],

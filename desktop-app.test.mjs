@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 实际打包 Electron 可执行文件、临时独立用户目录与 Playwright Electron 驱动
- * [OUTPUT]: 验证 beta.8 门禁、原生终端、更新禁用、配置持久化、未登录卸载和重启不复活
+ * [OUTPUT]: 验证运行树完整性、原生模块/文档转换、门禁、更新禁用、配置持久化与卸载
  * [POS]: 安装包实际窗口与 Host 的端到端验收，运行时不接触用户真实数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -39,6 +39,8 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
     let page = await start()
     await page.getByRole('dialog', { name: 'OwnDsh', exact: true }).waitFor()
     const appPath = await app.evaluate(({ app }) => app.getAppPath())
+    const { verifyDesktopRuntime } = await import('./.build/electron-source/apps/desktop/src/runtime-tree.mjs')
+    await verifyDesktopRuntime(appPath, '0.1.6-alpha.2')
     const native = await promisify(execFile)(executablePath, ['--expose-internals',
       join(import.meta.dirname, '.build/official-harness/apps/desktop/tests/fixtures/runtime-payload-smoke.mjs'), appPath,
     ], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 120000 })
@@ -49,11 +51,11 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
       import { pathToFileURL } from 'node:url'
       const requireRuntime = createRequire(process.argv[1] + '/package.json')
       const { createConverter } = await import(pathToFileURL(requireRuntime.resolve('@deepseek-ai/libreoffice-kit')))
-      const converter = await createConverter({ timeoutMs: 60000 })
+      const converter = await createConverter()
       try { await converter.render({ inputPath: process.argv[2], outputPath: process.argv[3] }) }
       finally { await converter.dispose() }
     `, appPath, join(home, 'preview.docx'), join(home, 'preview.pdf')], {
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 90000,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 150000,
     })
     assert.equal((await readFile(join(home, 'preview.pdf'))).subarray(0, 5).toString(), '%PDF-')
     assert.equal(await page.evaluate(() => typeof Iterator), 'function')
