@@ -153,11 +153,10 @@ if (process.argv.includes('--prepare-only')) {
       asar: false,
       extraResources: [{ from: resources, to: 'runtime' }, { from: icon, to: 'icon.png' }],
       publish: null,
-      afterPack: async context => { if (windows) await sealPackage(context) },
       afterSign: async context => {
-        if (windows) return
         // 原生签名会改变文件字节；更新最终清单后重新封印外层 App。
         await sealPackage(context)
+        if (windows) return
         const bundle = join(context.appOutDir, 'OwnDsh Electron.app')
         run('codesign', ['--force', '--sign', '-', '--preserve-metadata=entitlements', bundle])
         run('codesign', ['--verify', '--deep', '--strict', bundle])

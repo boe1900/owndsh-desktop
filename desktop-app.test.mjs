@@ -39,8 +39,20 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
     let page = await start()
     await page.getByRole('dialog', { name: 'OwnDsh', exact: true }).waitFor()
     const appPath = await app.evaluate(({ app }) => app.getAppPath())
-    const { verifyDesktopRuntime } = await import('./.build/electron-source/apps/desktop/src/runtime-tree.mjs')
-    await verifyDesktopRuntime(appPath, '0.1.6-alpha.2')
+    const { verifyDesktopRuntime, inventoryDesktopRuntime } = await import('./.build/electron-source/apps/desktop/src/runtime-tree.mjs')
+    try { await verifyDesktopRuntime(appPath, '0.1.6-alpha.2') } catch (error) {
+      const expected = JSON.parse(await readFile(join(appPath, 'desktop-runtime.json'), 'utf8')).files
+      const actual = inventoryDesktopRuntime(appPath)
+      const before = new Map(expected.map(file => [file.path, file]))
+      const after = new Map(actual.map(file => [file.path, file]))
+      const changed = [...new Set([...before.keys(), ...after.keys()])].filter(path => {
+        const a = before.get(path), b = after.get(path)
+        return !a || !b || a.bytes !== b.bytes || a.sha256 !== b.sha256
+      })
+      process.stderr.write(JSON.stringify({ expectedFiles: expected.length, actualFiles: actual.length,
+        changed: changed.slice(0, 30).map(path => ({ path, before: before.get(path), after: after.get(path) })) }, null, 2) + '\n')
+      throw error
+    }
     const native = await promisify(execFile)(executablePath, ['--expose-internals',
       join(import.meta.dirname, '.build/official-harness/apps/desktop/tests/fixtures/runtime-payload-smoke.mjs'), appPath,
     ], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 120000 })
