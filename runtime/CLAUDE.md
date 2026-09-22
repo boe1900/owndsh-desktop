@@ -1,7 +1,7 @@
 # runtime/
 > L2 | 父级: ../CLAUDE.md
 
-package.json: 桌面 0.1.6 运行树精确声明 Harness 0.1.5-rc.2、pnpm 11.26.0 与 npm 发布插件 0.1.0-beta.7，直接使用插件声明的兼容 peers。
-package-lock.json: 全部运行依赖的版本、来源与完整性锁；由目标平台 npm ci 安装匹配的原生包。
+package.json: Harness/Office 0.1.6-alpha.2、owndsh-plugin 0.1.0-beta.8、pnpm 11.7.0 以及官方壳运行依赖的发行入口。
+package-lock.json: npm 完整性与精确依赖图；构建检查第一方 dsh 包保持同一版本，避免两套 Host 单例。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

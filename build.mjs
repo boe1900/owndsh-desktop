@@ -1,218 +1,165 @@
 /**
- * [INPUT]: 依赖 npm 锁定 Pake/Harness/插件、桌面 WebKit 兼容脚本与目标平台 Node/Rust 工具链
- * [OUTPUT]: 生成平台专用图标、原生 Windows dsh 命令入口、DMG/NSIS 安装包、版本清单与 SHA-256
- * [POS]: 独立桌面仓库的发行编排器，仅在 .build/dist 生成第三方副本
+ * [INPUT]: upstream.json 固定官方源码、npm 双锁、OwnDsh 图标与原生构建机
+ * [OUTPUT]: 官方 Electron Desktop + Harness + 插件的离线安装包及版本/摘要清单
+ * [POS]: OwnDsh 发行编排；复用官方窗口、Host、primary-runtime 和运行树校验
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
-
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { cp, mkdir, readFile, readdir, writeFile, chmod, rm, symlink } from 'node:fs/promises'
+import { chmod, cp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { build } from 'esbuild'
+import sharp from 'sharp'
+import { patchDesktop } from './patch-desktop.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
 const windows = process.platform === 'win32'
-const stage = join(root, '.build', 'pake')
-const tauriRoot = join(stage, 'src-tauri')
-const runtime = join(stage, 'runtime')
+assert.ok(windows ? process.arch === 'x64' : process.platform === 'darwin' && ['x64', 'arm64'].includes(process.arch), 'Use a native macOS/Windows builder')
+const require = createRequire(import.meta.url)
+const upstream = JSON.parse(await readFile(join(root, 'upstream.json'), 'utf8'))
 const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-const sharp = createRequire(join(root, 'node_modules/pake-cli/package.json'))('sharp')
-const run = (file, args, cwd = root) => execFileSync(file, args, { cwd, stdio: 'inherit' })
-const json = async (path, value) => writeFile(path, `${JSON.stringify(value, null, 2)}\n`)
-assert.ok(['darwin', 'win32'].includes(process.platform), 'Build on native macOS or Windows runners')
-assert.ok(windows ? process.arch === 'x64' : ['x64', 'arm64'].includes(process.arch), 'Unsupported architecture')
-assert.equal(process.version, 'v24.14.1', 'Build with Node 24.14.1 so the embedded runtime is reproducible')
+const runtimeManifest = JSON.parse(await readFile(join(root, 'runtime/package.json'), 'utf8'))
+const run = (command, args, options = {}) => execFileSync(command, args, { cwd: root, stdio: 'inherit', ...options })
+const json = (path, value) => writeFile(path, JSON.stringify(value, null, 2) + '\n')
+const cache = join(root, '.build/official-harness')
+const source = join(root, '.build/electron-source')
+const app = join(root, '.build/electron-app')
+const resources = join(root, '.build/electron-resources')
+const output = join(root, 'dist/electron')
 
-await mkdir(stage, { recursive: true })
-await cp(join(root, 'node_modules', 'pake-cli', 'src-tauri'), tauriRoot, { recursive: true, verbatimSymlinks: true })
-await cp(join(root, 'web-compat.js'), join(tauriRoot, 'src/inject/compat.js'))
-await rm(runtime, { recursive: true, force: true })
-await mkdir(runtime, { recursive: true })
-await cp(join(root, 'runtime', 'node_modules'), join(runtime, 'node_modules'), { recursive: true, verbatimSymlinks: true })
-await cp(join(root, 'runtime', 'package.json'), join(runtime, 'package.json'))
-await cp(join(root, 'runtime', 'package-lock.json'), join(runtime, 'package-lock.json'))
-await cp(join(root, 'launcher.mjs'), join(runtime, 'launcher.mjs'))
-await cp(join(root, 'windows-job.mjs'), join(runtime, 'windows-job.mjs'))
-await mkdir(join(runtime, 'bin'), { recursive: true })
-await cp(process.execPath, join(runtime, 'bin', windows ? 'node.exe' : 'node'))
-await chmod(join(runtime, 'bin', windows ? 'node.exe' : 'node'), 0o755)
-await cp(join(root, 'assets/NODE-LICENSE'), join(runtime, 'NODE-LICENSE'))
-
-// PDF.js runs its worker from a Blob, outside Tauri's document initialization scripts.
-// Prepend the same compatibility layer to that worker while preserving the npm package lock.
-const previewBundle = join(runtime, 'node_modules/@deepseek-ai/dsh-client-ui-sidebar-documentpreview/lib/client.js')
-const previewSource = await readFile(previewBundle, 'utf8')
-const workerMarker = 'var _dsh_pdf_worker_default = "'
-assert.equal(previewSource.split(workerMarker).length, 2, 'document preview worker bundle changed')
-const compatSource = await readFile(join(root, 'web-compat.js'), 'utf8')
-await writeFile(previewBundle, previewSource.replace(workerMarker, `var _dsh_pdf_worker_default = ${JSON.stringify(`${compatSource}\n`)} + "`))
-
-for (const [name, entry] of [
-  ['dsh', '@deepseek-ai/dsh/lib/bin.js'],
-  ['pnpm', 'pnpm/bin/pnpm.cjs'],
-]) {
-  if (windows) {
-    if (name === 'dsh') {
-      run('rustc', ['--edition=2021', '-C', 'opt-level=s', '-C', 'strip=symbols',
-        join(root, 'dsh-cli.rs'), '-o', join(runtime, 'bin', 'dsh.exe')])
-      continue
-    }
-    await writeFile(join(runtime, 'bin', `${name}.cmd`), `@echo off\r\n"%~dp0node.exe" "%~dp0..\\node_modules\\${entry.replaceAll('/', '\\')}" %*\r\n`)
-    continue
-  }
-  await writeFile(join(runtime, 'bin', name), [
-    '#!/bin/sh',
-    'runtime_bin=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)',
-    `exec "$runtime_bin/node" "$runtime_bin/../node_modules/${entry}" "$@"`,
-    '',
-  ].join('\n'), { mode: 0o755 })
-  await chmod(join(runtime, 'bin', name), 0o755)
+await mkdir(join(root, '.build'), { recursive: true })
+if (!existsSync(cache)) run('git', ['clone', '--depth', '1', '--branch', upstream.tag, upstream.repository, cache])
+assert.equal(run('git', ['rev-parse', 'HEAD'], { cwd: cache, stdio: 'pipe', encoding: 'utf8' }).trim(), upstream.commit)
+assert.equal(run('git', ['status', '--porcelain'], { cwd: cache, stdio: 'pipe', encoding: 'utf8' }).trim(), '', 'Cached upstream source must stay clean')
+await rm(source, { recursive: true, force: true })
+for (const name of ['desktop', 'desktop-host']) {
+  await cp(join(cache, 'apps', name), join(source, 'apps', name), { recursive: true })
 }
-
-const lock = JSON.parse(await readFile(join(runtime, 'package-lock.json'), 'utf8'))
-const pluginManifest = JSON.parse(await readFile(join(runtime, 'node_modules/owndsh-plugin/package.json'), 'utf8'))
-await json(join(runtime, 'build-info.json'), {
-  app: manifest.version,
-  pake: manifest.devDependencies['pake-cli'],
-  harness: JSON.parse(await readFile(join(runtime, 'node_modules/@deepseek-ai/dsh/package.json'), 'utf8')).version,
-  node: process.version,
-  platform: process.platform,
-  arch: process.arch,
-  plugin: pluginManifest.version,
-  pluginIntegrity: lock.packages['node_modules/owndsh-plugin'].integrity,
-  runtimeLockSha256: createHash('sha256').update(await readFile(join(runtime, 'package-lock.json'))).digest('hex'),
-  sourceCommit: process.env.GITHUB_SHA ?? 'local',
+// 源码辅助脚本从已锁定 npm 运行树解析 Host 包，工具仍从根 node_modules 解析。
+await symlink(join(root, 'runtime/node_modules'), join(source, 'node_modules'), windows ? 'junction' : 'dir')
+await patchDesktop(source, runtimeManifest.dependencies['owndsh-plugin'])
+await cp(join(root, 'credential-lock.mjs'), join(source, 'apps/desktop/src/credential-lock.mjs'))
+await rm(app, { recursive: true, force: true })
+await mkdir(app, { recursive: true })
+await cp(join(root, 'runtime/node_modules'), join(app, 'node_modules'), {
+  recursive: true, dereference: true,
+  filter: path => !path.split(/[\\/]/).includes('.bin'),
 })
-
-await cp(join(root, 'host.rs'), join(tauriRoot, 'src', 'host.rs'))
-let rust = await readFile(join(tauriRoot, 'src', 'lib.rs'), 'utf8')
-const replacements = [
-  ['mod app;\n', 'mod app;\nmod host;\n'],
-  ['.setup(move |app| {', `.setup(move |app| {
-            let host = host::HarnessProcess::start(app)?;
-            let mut pake_config = pake_config.clone();
-            pake_config.windows[0].url = host.url.clone();
-            pake_config.system_tray_path = app.path().resource_dir()?.join("tray.png").to_string_lossy().into_owned();
-            app.manage(host);`],
-  ['.run(move |_app, _event| {', `.run(move |_app, _event| {
-            if matches!(_event, tauri::RunEvent::ExitRequested { .. }) {
-                if let Some(host) = _app.try_state::<host::HarnessProcess>() {
-                    host.stop();
-                }
-            }`],
-]
-for (const [before, after] of replacements) {
-  assert.equal(rust.split(before).length, 2, `Pake hook changed: ${before}`)
-  rust = rust.replace(before, after)
+// 所有核心包必须来自同一 Harness 发布，防止 npm 带入第二套 Host 单例。
+const sharedNames = []
+for (const name of await readdir(join(app, 'node_modules/@deepseek-ai'))) {
+  const pkg = JSON.parse(await readFile(join(app, 'node_modules/@deepseek-ai', name, 'package.json'), 'utf8'))
+  if (name === 'dsh' || name.startsWith('dsh-')) assert.equal(pkg.version, manifest.version, `Unexpected ${pkg.name} version`)
+  sharedNames.push(pkg.name)
 }
-await writeFile(join(tauriRoot, 'src', 'lib.rs'), rust)
-
-const windowPath = join(tauriRoot, 'src/app/window.rs')
-let windowSource = await readFile(windowPath, 'utf8')
-const windowMarker = '.initialization_script_for_all_frames(&config_script)'
-assert.equal(windowSource.split(windowMarker).length, 2, `Pake hook changed: ${windowMarker}`)
-windowSource = windowSource.replace(windowMarker, `${windowMarker}\n        .initialization_script_for_all_frames(include_str!("../inject/compat.js"))`)
-await writeFile(windowPath, windowSource)
-
-const setupPath = join(tauriRoot, 'src/app/setup.rs')
-let setup = await readFile(setupPath, 'utf8')
-for (const [before, after] of [
-  ['.menu(&menu)', '.menu(&menu)\n        .tooltip("OwnDsh")\n        .show_menu_on_left_click(false)'],
-  ['tray.set_icon_as_template(false)?;', 'tray.set_icon_as_template(cfg!(target_os = "macos"))?;'],
-  ['"hide_app", "Hide"', '"hide_app", "隐藏窗口"'],
-  ['"show_app", "Show"', '"show_app", "显示 OwnDsh"'],
-  ['"quit", "Quit"', '"quit", "退出 OwnDsh"'],
-]) {
-  assert.equal(setup.split(before).length, 2, `Pake tray hook changed: ${before}`)
-  setup = setup.replace(before, after)
-}
-await writeFile(setupPath, setup)
-
-const pake = JSON.parse(await readFile(join(tauriRoot, 'pake.json'), 'utf8'))
-Object.assign(pake.windows[0], {
-  url: 'http://127.0.0.1', url_type: 'web', title: 'OwnDsh',
-  width: 1400, height: 900, hide_title_bar: false, hide_on_close: true,
+assert.equal(JSON.parse(await readFile(join(app, 'node_modules/owndsh-plugin/package.json'), 'utf8')).version, '0.1.0-beta.8')
+const sourceDesktop = join(source, 'apps/desktop')
+const sourceHost = join(source, 'apps/desktop-host')
+await mkdir(join(sourceDesktop, '.desktop-build'), { recursive: true })
+await mkdir(join(root, '.build/primary-downloads'), { recursive: true })
+await symlink(join(root, '.build/primary-downloads'), join(sourceDesktop, '.desktop-build/downloads'), windows ? 'junction' : 'dir')
+const compile = (entry, outfile, format = 'esm') => build({
+  entryPoints: [entry], outfile, bundle: true, platform: 'node', format, target: 'es2024',
+  packages: 'external', tsconfigRaw: {}, logLevel: 'info',
 })
-pake.system_tray = { macos: true, windows: true, linux: false }
-await json(join(tauriRoot, 'pake.json'), pake)
-await mkdir(join(stage, 'dist'), { recursive: true })
-await writeFile(join(stage, 'dist', 'index.html'), '<!doctype html><html><head><title>OwnDsh</title></head><body></body></html>\n')
-await json(join(stage, 'package.json'), { name: 'owndsh-pake-build', version: manifest.version, private: true })
+await compile(join(sourceDesktop, 'src/main.ts'), join(app, 'lib/main.js'))
+for (const name of ['preload-app', 'preload-mandatory', 'preload-update-dialog']) {
+  await compile(join(sourceDesktop, 'src', `${name}.ts`), join(app, 'lib', `${name}.cjs`), 'cjs')
+}
+const privateHost = join(app, 'node_modules/@deepseek-ai/dsh-desktop-host')
+await mkdir(privateHost, { recursive: true })
+await json(join(privateHost, 'package.json'), { name: '@deepseek-ai/dsh-desktop-host', version: manifest.version, private: true, type: 'module', main: 'lib/index.js' })
+await compile(join(sourceHost, 'src/index.ts'), join(privateHost, 'lib/index.js'))
+sharedNames.push('@deepseek-ai/dsh-desktop-host')
+const bridge = join(app, 'node_modules/@owndsh/desktop-bridge')
+await mkdir(bridge, { recursive: true })
+await cp(join(root, 'plugin-bridge.mjs'), join(bridge, 'index.mjs'))
+await json(join(bridge, 'package.json'), { name: '@owndsh/desktop-bridge', version: manifest.version, type: 'module', main: 'index.mjs', private: true })
+await writeFile(join(app, 'owndsh-desktop.patch.yml'), "- insert:\n    - id: owndsh-desktop-bridge\n      name: '@owndsh/desktop-bridge'\n- id: owndsh\n  inject: [desktopProfiles, desktopPnpm]\n")
+await cp(join(sourceDesktop, 'renderer'), join(app, 'renderer'), { recursive: true })
+await cp(join(cache, 'LICENSE'), join(app, 'HARNESS-LICENSE'))
+await cp(join(cache, 'THIRD_PARTY_NOTICES.md'), join(app, 'HARNESS-THIRD-PARTY-NOTICES.md'))
+await cp(join(root, 'LICENSE'), join(app, 'LICENSE'))
+await json(join(app, 'package.json'), {
+  name: 'owndsh-official-desktop', version: manifest.version, private: true, type: 'module',
+  description: manifest.description, author: 'OwnDsh contributors', license: manifest.license, main: 'lib/main.js',
+  dependencies: { ...runtimeManifest.dependencies, '@deepseek-ai/dsh-desktop-host': manifest.version, '@owndsh/desktop-bridge': manifest.version },
+})
+// 复用官方带哈希的 Python/Node/Office 下载锁及其 smoke，不裁掉 Desktop 功能。
+await compile(join(sourceDesktop, 'scripts/prepare-primary-runtime.ts'), join(sourceDesktop, 'scripts/prepare-primary-runtime.mjs'))
+run(process.execPath, [join(sourceDesktop, 'scripts/prepare-primary-runtime.mjs')])
+const target = `${windows ? 'win' : 'mac'}-${process.arch}`
+await rm(resources, { recursive: true, force: true })
+await cp(join(sourceDesktop, '.desktop-build/targets', target, 'runtime'), resources, { recursive: true, dereference: true })
+await cp(join(root, 'runtime/node_modules/pnpm'), join(resources, 'pnpm'), { recursive: true, dereference: true })
+await cp(join(sourceDesktop, 'scripts/node-bin'), join(resources, 'bin'), { recursive: true })
+if (!windows) await chmod(join(resources, 'bin/node'), 0o755)
 
-const tauri = (args, cwd = root) => run(process.execPath, [join(root, 'node_modules/@tauri-apps/cli/tauri.js'), ...args], cwd)
-const brandIcon = join(root, 'assets/icon.png')
-const appIcon = join(stage, windows ? 'icon-windows.png' : 'icon-macos.png')
-// 沿用 Pake 3.16.1 的 macOS mask 尺寸；CLI 未导出该图像处理函数。
+const icon = join(resources, 'icon.png')
 const mask = Buffer.from('<svg width="1024" height="1024"><rect width="1024" height="1024" rx="224" fill="white"/></svg>')
-const rounded = await sharp(brandIcon).resize(1024, 1024).ensureAlpha()
-  .composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer()
-// Mac Dock 需要外侧留白；Windows ICO 使用完整画布，避免桌面和任务栏图标偏小。
-const appImage = sharp(rounded)
-if (!windows) appImage.resize(840, 840)
-  .extend({ top: 92, bottom: 92, left: 92, right: 92, background: '#00000000' })
-await appImage.png().toFile(appIcon)
-tauri(['icon', appIcon, '--output', join(tauriRoot, 'icons')])
-// 黑底白图的亮度直接转为 alpha，让 macOS 自动适配明暗菜单栏。
-const silhouette = await sharp(brandIcon).resize(32, 32).greyscale().raw().toBuffer()
-const trayPixels = Buffer.alloc(32 * 32 * 4)
-silhouette.forEach((alpha, index) => { trayPixels[index * 4 + 3] = alpha })
-await sharp(trayPixels, { raw: { width: 32, height: 32, channels: 4 } })
-  .extend({ top: 2, bottom: 2, left: 2, right: 2, background: '#00000000' })
-  .png().toFile(join(tauriRoot, 'icons/tray.png'))
-if (windows) await sharp(brandIcon).resize(32, 32).png().toFile(join(tauriRoot, 'icons/tray.png'))
-const config = JSON.parse(await readFile(join(tauriRoot, 'tauri.conf.json'), 'utf8'))
-Object.assign(config, { productName: 'OwnDsh', identifier: 'com.owndsh.desktop', version: manifest.version })
-config.app.trayIcon = undefined
-config.bundle = {
-  active: true, targets: [windows ? 'nsis' : 'app'],
-  icon: [windows ? 'icons/icon.ico' : 'icons/icon.icns'],
-  resources: { '../runtime/': 'runtime/', 'icons/tray.png': 'tray.png' },
-  copyright: 'OwnDsh contributors. Desktop shell based on Pake (GPL-3.0-or-later).',
-  shortDescription: 'DeepSeek Harness with OwnDsh',
-  macOS: { minimumSystemVersion: '13.5', signingIdentity: '-', infoPlist: 'Info.plist' },
-  windows: { webviewInstallMode: { type: 'embedBootstrapper', silent: true }, nsis: { installMode: 'currentUser' } },
-}
-await json(join(tauriRoot, 'tauri.conf.json'), config)
-const capabilityPath = join(tauriRoot, 'capabilities', 'default.json')
-const capability = JSON.parse(await readFile(capabilityPath, 'utf8'))
-capability.remote.urls = ['http://127.0.0.1:*']
-await json(capabilityPath, capability)
-// 平台配置同样参与 Tauri merge，清空上游示例应用的 bundle 元数据。
-await json(join(tauriRoot, 'tauri.macos.conf.json'), {})
-await json(join(tauriRoot, 'tauri.windows.conf.json'), {})
-await cp(join(root, 'node_modules/pake-cli/LICENSE'), join(runtime, 'PAKE-LICENSE'))
-await cp(join(root, 'node_modules/pake-cli/LICENSE-EXCEPTION'), join(runtime, 'PAKE-LICENSE-EXCEPTION'))
+const rounded = await sharp(join(root, 'assets/icon.png')).resize(1024, 1024).ensureAlpha().composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer()
+const graphic = sharp(rounded)
+if (!windows) graphic.resize(840, 840).extend({ top: 92, bottom: 92, left: 92, right: 92, background: '#00000000' })
+await graphic.png().toFile(icon)
 
-process.stdout.write(`Prepared ${runtime}\n`)
-if (!process.argv.includes('--prepare-only')) {
-  if (windows) await rm(join(tauriRoot, 'target/release/bundle/nsis'), { recursive: true, force: true })
-  tauri(['build', '--bundles', windows ? 'nsis' : 'app', '--', '--locked'], stage)
-  const output = join(root, 'dist')
-  await mkdir(output, { recursive: true })
-  const label = `${windows ? 'windows' : 'macos'}-${process.arch}`
-  const artifactName = `OwnDsh-${manifest.version}-${label}${windows ? '-setup.exe' : '.dmg'}`
-  if (windows) {
-    const bundle = join(tauriRoot, 'target/release/bundle/nsis')
-    const installers = (await readdir(bundle)).filter(name => name.endsWith('.exe'))
-    assert.equal(installers.length, 1, 'Expected one NSIS installer')
-    await cp(join(bundle, installers[0]), join(output, artifactName))
-  } else {
-    const app = join(output, 'OwnDsh.app')
-    await rm(app, { recursive: true, force: true })
-    await cp(join(tauriRoot, 'target/release/bundle/macos/OwnDsh.app'), app, { recursive: true, verbatimSymlinks: true })
-    const imageRoot = join(root, '.build', 'dmg')
-    await rm(imageRoot, { recursive: true, force: true })
-    await mkdir(imageRoot, { recursive: true })
-    await symlink('/Applications', join(imageRoot, 'Applications'))
-    await cp(app, join(imageRoot, 'OwnDsh.app'), { recursive: true, verbatimSymlinks: true })
-    const dmg = join(output, artifactName)
-    run('hdiutil', ['create', '-volname', 'OwnDsh', '-srcfolder', imageRoot, '-ov', '-format', 'UDZO', dmg])
-    process.stdout.write(`Built ${app}\nBuilt ${dmg}\n`)
+const electron = require('electron')
+const nodeVersion = run(electron, ['-p', 'process.versions.node'], { stdio: 'pipe', encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } }).trim()
+const runtimeTools = join(sourceDesktop, 'src/runtime-tree.mjs')
+await compile(join(sourceDesktop, 'src/runtime-tree.ts'), runtimeTools)
+const { writeDesktopRuntime, verifyDesktopRuntime } = await import(pathToFileURL(runtimeTools))
+const { DESKTOP_HOST_PROTOCOL_VERSION } = await import(pathToFileURL(join(sourceDesktop, 'src/host-protocol.ts')))
+// 单一 npm 树放在 app 根；官方主进程和私有 Host 都使用它，避免复制单例包。
+writeDesktopRuntime(app, { schemaVersion: 1, version: manifest.version, hostProtocolVersion: DESKTOP_HOST_PROTOCOL_VERSION,
+  nodeVersion, pnpmVersion: runtimeManifest.dependencies.pnpm }, sharedNames)
+await verifyDesktopRuntime(app, manifest.version)
+await mkdir(output, { recursive: true })
+const label = `${windows ? 'windows' : 'macos'}-${process.arch}`
+const lock = JSON.parse(await readFile(join(root, 'runtime/package-lock.json'), 'utf8'))
+await json(join(output, `build-info-${label}.json`), {
+  app: manifest.version, shell: 'official-electron', electron: manifest.devDependencies.electron,
+  harness: runtimeManifest.dependencies['@deepseek-ai/dsh'], harnessCommit: upstream.commit,
+  plugin: runtimeManifest.dependencies['owndsh-plugin'], pluginIntegrity: lock.packages['node_modules/owndsh-plugin'].integrity,
+  node: nodeVersion, platform: process.platform, arch: process.arch,
+  automaticUpdates: false, mandatoryUpdates: false,
+  runtimeLockSha256: createHash('sha256').update(await readFile(join(root, 'runtime/package-lock.json'))).digest('hex'),
+  sourceCommit: process.env.GITHUB_SHA ?? run('git', ['rev-parse', 'HEAD'], { stdio: 'pipe', encoding: 'utf8' }).trim(),
+  sourceDirty: run('git', ['status', '--porcelain'], { stdio: 'pipe', encoding: 'utf8' }).trim() !== '',
+})
+if (process.argv.includes('--prepare-only')) {
+  process.stdout.write(`Prepared official Desktop at ${app}\n`)
+} else {
+  const { build: packageApp, Platform } = await import('electron-builder')
+  const artifacts = await packageApp({
+    targets: (windows ? Platform.WINDOWS : Platform.MAC).createTarget(windows ? 'nsis' : 'dmg'),
+    publish: 'never',
+    config: {
+      appId: 'com.owndsh.desktop.electron', productName: 'OwnDsh Electron',
+      electronVersion: manifest.devDependencies.electron,
+      directories: { app, output, buildResources: resources },
+      artifactName: `OwnDsh-Electron-${manifest.version}-${label}.` + '${ext}',
+      // 官方运行树已完成解析；禁止 builder 再裁剪 peer 依赖。
+      beforeBuild: async () => false,
+      files: ['**/*', { from: join(app, 'node_modules'), to: 'node_modules', filter: ['**/*'] }], asar: true,
+      asarUnpack: ['**/*.{node,dylib,dll,so,exe}', '**/*.so.*', '**/spawn-helper', '**/bin/rg', '**/@deepseek-ai/libreoffice-kit-*/**'],
+      extraResources: [{ from: resources, to: 'runtime' }, { from: icon, to: 'icon.png' }],
+      publish: null,
+      mac: { icon, identity: '-', hardenedRuntime: false, notarize: false, category: 'public.app-category.developer-tools',
+        // 上游只携带 LibreOffice 库，非完整 App；内部 Mach-O 仍逐个签名。
+        signIgnore: ['LibreOfficeDev\\.app$'],
+      },
+      dmg: { sign: false, writeUpdateInfo: false },
+      win: { icon, signAndEditExecutable: true },
+      nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true, deleteAppDataOnUninstall: false, differentialPackage: false },
+    },
+  })
+  const sums = []
+  for (const path of artifacts.filter(path => /\.(dmg|exe)$/.test(path))) {
+    sums.push(`${createHash('sha256').update(await readFile(path)).digest('hex')}  ${path.split(/[\\/]/).at(-1)}`)
   }
-  await cp(join(runtime, 'build-info.json'), join(output, `build-info-${label}.json`))
-  const hash = createHash('sha256').update(await readFile(join(output, artifactName))).digest('hex')
-  await writeFile(join(output, `SHA256SUMS-${label}.txt`), `${hash}  ${artifactName}\n`)
+  assert.ok(sums.length, 'No installer produced')
+  await writeFile(join(output, `SHA256SUMS-${label}.txt`), sums.join('\n') + '\n')
 }

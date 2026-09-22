@@ -1,17 +1,27 @@
 {
   "name": "owndsh-desktop",
-  "version": "0.1.6",
+  "version": "0.1.6-alpha.2",
   "private": true,
   "type": "module",
-  "description": "Pake desktop carrier for official DeepSeek Harness and OwnDsh",
+  "description": "OwnDsh distribution of the official DeepSeek Harness Electron desktop",
   "license": "GPL-3.0-or-later",
-  "engines": { "node": "24.14.1" },
+  "engines": {
+    "node": "24.14.1"
+  },
   "scripts": {
     "prepare:runtime": "node build.mjs --prepare-only",
     "build": "node build.mjs",
-    "test": "node --test launcher.test.mjs web-compat.test.mjs"
+    "test": "node --test desktop.test.mjs",
+    "test:app": "node --test desktop-app.test.mjs"
   },
   "devDependencies": {
-    "pake-cli": "3.16.1"
+    "electron": "44.0.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.1",
+    "extract-zip": "2.0.1",
+    "tar": "7.5.22",
+    "pnpm": "11.7.0",
+    "sharp": "0.35.3",
+    "playwright": "1.58.2"
   }
 }

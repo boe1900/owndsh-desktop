@@ -1,7 +1,7 @@
 # assets/
 > L2 | 父级: ../CLAUDE.md
 
-icon.png: 从 OwnDsh 品牌资源迁入的黑底白鲸原图；构建时 Mac 应用图标保留 Dock 留白，Windows ICO 圆角图案占满画布，托盘图另按平台生成。
-NODE-LICENSE: Node v24.14.1 官方发行许可证及第三方声明，与内置 Node 同版本分发。
+icon.png: OwnDsh 品牌原图，构建时生成 Mac 带留白/Windows 满幅的圆角图，交由 electron-builder 编码。
+NODE-LICENSE: 历史 Pake 发行内置 Node 24.14.1 的许可证；当前官方 primary-runtime 自带其锁定 Node 的许可证。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

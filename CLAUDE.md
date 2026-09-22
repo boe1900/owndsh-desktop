@@ -1,30 +1,28 @@
-# OwnDsh Desktop - 官方 Harness 与 OwnDsh 插件的独立桌面发行
+# OwnDsh Desktop - 官方 Harness Electron 的独立插件预装发行
 
-Pake 3.16.1 + Tauri 2 + Node 24.14.1 + Harness 0.1.5-rc.2 + npm 锁定插件 0.1.0-beta.7
+Electron 44.0.0 + Harness 0.1.6-alpha.2 + OwnDsh 插件 0.1.0-beta.8 + esbuild + electron-builder
 
 <directory>
-.github/ - 原生 macOS Intel/ARM、Windows x64 构建与标签草稿发布
-assets/ - 自有品牌图与内置 Node 许可证
-runtime/ - 官方 Harness、OwnDsh 插件与 pnpm 的独立 npm 精确版本锁
+.github/ - macOS Intel/ARM、Windows x64 实验分支构建与真实应用验收
+assets/ - OwnDsh 品牌图与历史 Node 许可证
+runtime/ - 官方 npm Host、Web、插件、pnpm 与 updater 依赖的精确锁
 </directory>
 
 <config>
-package.json / package-lock.json - 构建工具依赖与 build/prepare:runtime/test 入口
-build.mjs - 生成 Pake 副本、Mac 留白/Windows 满幅圆角图标、运行树与 DMG/NSIS 包，不读取兄弟仓库
-dsh-cli.rs - Windows 原生 dsh.exe 入口，无 shell 透传到内置 Node/官方 CLI，兼容官方 subprocess 的直接启动
-launcher.mjs - 启动时恢复已退出进程留下的凭据锁，离线播种用户 profile，同步桌面自管链接与 pnpm 的发行版本，启动回环 Host 并管理进程/脱敏日志
-web-compat.js - WebKit 初始化兼容层，为官方文档预览补齐 Iterator Helpers，并同步注入 PDF worker
-web-compat.test.mjs - 在缺少全局 Iterator 的隔离上下文中验证文档预览所需兼容方法
-windows-job.mjs - 使用 Harness 已安装的 koffi 创建 Windows Job，launcher 退出即回收后代
-host.rs - Tauri setup/exit 适配，从内置资源工作目录启动相对脚本以兼容 Windows verbatim 路径，校验 URL 并通过 stdin 管理生命周期
-launcher.test.mjs - 带空格路径、最小 PATH、启动/持久化/WebSocket/退出、未登录真实 API 卸载及重启不复活测试；Windows 验证 Job，OWNDSH_TEST_APP 验证实际原生入口及宿主结束回收
-README.md - 使用、数据、构建、发布和平台验证边界
-LICENSE / LICENSE-EXCEPTION - Pake GPL-3.0-or-later 与上游例外声明
-.gitignore / .gitattributes - 产物和秘密排除、跨平台文本换行
+package.json / package-lock.json - 构建与测试工具版本和脚本入口
+upstream.json - 官方 Desktop 源码仓库、发布 tag 与不可变 commit
+build.mjs - 下载固定源码、构建官方 Electron/Host、保留官方 primary-runtime、校验并生成安装包
+patch-desktop.mjs - 在临时副本禁用更新、隔离数据目录、播种插件并接入企业包管理桥接
+plugin-bridge.mjs - beta.8 Desktop 命令接口适配到官方 runPluginCommand，沿用官方锁/取消/包解析
+credential-lock.mjs - 单实例锁之后、Host 启动之前保守回收死亡 PID 的凭据锁
+desktop.test.mjs - 凭据锁恢复、更新拒绝网络与安装、profile 播种和卸载持久化回归
+desktop-app.test.mjs - 实际 Electron 应用门禁、原生终端、持久化、未登录卸载及重启验收
+README.md - 数据隔离、构建、许可及已知边界
+LICENSE / LICENSE-EXCEPTION - 保留仓库原 GPL 许可和历史 Pake 声明；发行已不包含 Pake 代码
+.gitignore / .gitattributes - 排除秘密、依赖与生成副本，统一换行
 </config>
 
-桌面层只拥有窗口、图标、托盘和服务生命周期。Web UI/工具属于官方 Harness，认证/企业能力属于独立插件；不复制两者业务源码，不内置 Server 地址或用户凭据。
-
-运行依赖从 npm 获取并锁定 integrity，直接遵循插件对官方 Harness 的兼容 peer 声明，禁止安装第二套 Host 单例依赖。升级时更新 runtime 清单和锁，三平台真实运行测试必须通过。
+本分支只维护官方 Desktop 的发行差异。npm 插件原样消费；Desktop 源码在 .build/electron-source 内按固定接缝派生，缓存原始 checkout 保持干净。官方 profile/Host/认证/包管理实现是唯一机制，不自行复制。
+实验版以 com.owndsh.desktop.electron 隔离真实用户数据；不自动迁移 Pake。自动/手动/强制更新均禁用，不能被环境变量或客户端调用恢复。版本必须匹配官方 shell/Host 发布；跨平台验收由原生 runner 执行。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
