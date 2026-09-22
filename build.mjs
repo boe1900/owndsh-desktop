@@ -143,8 +143,9 @@ if (process.argv.includes('--prepare-only')) {
       artifactName: `OwnDsh-Electron-${manifest.version}-${label}.` + '${ext}',
       // 官方运行树已完成解析；禁止 builder 再裁剪 peer 依赖。
       beforeBuild: async () => false,
-      files: ['**/*', { from: join(app, 'node_modules'), to: 'node_modules', filter: ['**/*'] }], asar: true,
-      asarUnpack: ['**/*.{node,dylib,dll,so,exe}', '**/*.so.*', '**/spawn-helper', '**/bin/rg', '**/@deepseek-ai/libreoffice-kit-*/**'],
+      files: ['**/*', { from: join(app, 'node_modules'), to: 'node_modules', filter: ['**/*'] }],
+      // 官方 LibreOffice helper 用 spawn + programDirectory，必须保留真实目录。
+      asar: false,
       extraResources: [{ from: resources, to: 'runtime' }, { from: icon, to: 'icon.png' }],
       publish: null,
       mac: { icon, identity: '-', hardenedRuntime: false, notarize: false, category: 'public.app-category.developer-tools',

@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { cp, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
@@ -43,6 +43,19 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
       join(import.meta.dirname, '.build/official-harness/apps/desktop/tests/fixtures/runtime-payload-smoke.mjs'), appPath,
     ], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 120000 })
     assert.match(native.stdout, /"pty":true/)
+    await cp(join(import.meta.dirname, '.build/official-harness/packages/bundle/web-app/tests/fixtures/document-conversion.docx'), join(home, 'preview.docx'))
+    await promisify(execFile)(executablePath, ['--input-type=module', '-e', `
+      import { createRequire } from 'node:module'
+      import { pathToFileURL } from 'node:url'
+      const requireRuntime = createRequire(process.argv[1] + '/package.json')
+      const { createConverter } = await import(pathToFileURL(requireRuntime.resolve('@deepseek-ai/libreoffice-kit')))
+      const converter = await createConverter({ timeoutMs: 60000 })
+      try { await converter.render({ inputPath: process.argv[2], outputPath: process.argv[3] }) }
+      finally { await converter.dispose() }
+    `, appPath, join(home, 'preview.docx'), join(home, 'preview.pdf')], {
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 90000,
+    })
+    assert.equal((await readFile(join(home, 'preview.pdf'))).subarray(0, 5).toString(), '%PDF-')
     assert.equal(await page.evaluate(() => typeof Iterator), 'function')
     assert.equal(await page.evaluate(() => window.dshDesktop.updates), undefined)
     const profilePath = join(home, 'profiles/desktop/package.json')
