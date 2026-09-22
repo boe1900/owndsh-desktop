@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { chmod, cp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build } from 'esbuild'
 import sharp from 'sharp'
@@ -45,9 +45,17 @@ await patchDesktop(source, runtimeManifest.dependencies['owndsh-plugin'])
 await cp(join(root, 'credential-lock.mjs'), join(source, 'apps/desktop/src/credential-lock.mjs'))
 await rm(app, { recursive: true, force: true })
 await mkdir(app, { recursive: true })
-await cp(join(root, 'runtime/node_modules'), join(app, 'node_modules'), {
+const modules = join(root, 'runtime/node_modules')
+const { desktopRuntimeFileExclusion } = await import(pathToFileURL(join(source, 'apps/desktop/scripts/runtime-file-policy.ts')))
+await cp(modules, join(app, 'node_modules'), {
   recursive: true, dereference: true,
-  filter: path => !path.split(/[\\/]/).includes('.bin'),
+  filter: path => {
+    const entry = relative(modules, path).replaceAll('\\', '/')
+    const conptyArch = entry.match(/^node-pty\/third_party\/conpty\/[^/]+\/win10-([^/]+)/)?.[1]
+    // 构建输入也携带 ConPTY 多架构副本；发行只保留目标系统可用的文件。
+    if (conptyArch && (!windows || conptyArch !== process.arch)) return false
+    return desktopRuntimeFileExclusion(entry, process, `${process.platform}-${process.arch}`) === undefined
+  },
 })
 // 所有核心包必须来自同一 Harness 发布，防止 npm 带入第二套 Host 单例。
 const sharedNames = []

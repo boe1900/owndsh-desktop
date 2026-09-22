@@ -11,7 +11,7 @@ runtime/ - 官方 npm Host、Web、插件、pnpm 与 updater 依赖的精确锁
 <config>
 package.json / package-lock.json - 构建与测试工具版本和脚本入口
 upstream.json - 官方 Desktop 源码仓库、发布 tag 与不可变 commit
-build.mjs - 构建官方 Electron/Host、保留 primary-runtime，原生签名后封印最终运行树并生成安装包
+build.mjs - 构建官方 Electron/Host、按官方规则筛选目标平台依赖、保留 primary-runtime，签名后封印运行树并生成安装包
 patch-desktop.mjs - 在临时副本禁用更新、隔离数据目录、播种插件并接入企业包管理桥接
 plugin-bridge.mjs - beta.8 Desktop 命令接口适配到官方 runPluginCommand，沿用官方锁/取消/包解析
 credential-lock.mjs - 单实例锁之后、Host 启动之前保守回收死亡 PID 的凭据锁
