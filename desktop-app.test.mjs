@@ -10,13 +10,38 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
 import { _electron as electron } from 'playwright'
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 
 const executablePath = process.env.OWNDSH_TEST_APP
 assert.ok(executablePath, 'Set OWNDSH_TEST_APP to the actual packaged Electron executable')
 
+async function bootMacOSAppWithoutCdp() {
+  const home = await mkdtemp(join(tmpdir(), 'OwnDsh Electron boot '))
+  const diagnosticFile = join(home, 'startup-error.log')
+  const child = spawn(executablePath, ['--enable-logging=stderr', '--disable-gpu', '--no-sandbox'], {
+    env: { ...process.env, OWNDSH_DESKTOP_HOME: home, DSH_TELEMETRY_DISABLED: '1', DSH_DESKTOP_DIAGNOSTIC_FILE: diagnosticFile },
+    stdio: ['ignore', 'ignore', 'pipe'],
+  })
+  let stderr = ''
+  child.stderr.on('data', chunk => { stderr += chunk })
+  const exited = new Promise(resolve => child.once('exit', (code, signal) => resolve({ code, signal })))
+  const stillRunning = await Promise.race([exited, new Promise(resolve => setTimeout(() => resolve(undefined), 15000))])
+  try {
+    assert.equal(stillRunning, undefined, `packaged macOS app exited during boot: ${JSON.stringify(stillRunning)}`)
+    assert.equal(await readFile(diagnosticFile, 'utf8').catch(() => ''), '')
+    assert.doesNotMatch(stderr, /Can't find variable: Iterator|failed to import loader entry|ENT_PLUGIN_CLI_FAILED/u)
+  } finally {
+    child.kill('SIGTERM')
+    await Promise.race([exited, new Promise(resolve => setTimeout(resolve, 5000))])
+    child.kill('SIGKILL')
+    await rm(home, { recursive: true, force: true })
+  }
+}
+
 test('packaged official desktop boots beta.10 with an isolated profile and preinstalled plugin', { timeout: 300000 }, async () => {
+  // GitHub macOS runners expose Node Inspector but not Electron CDP to Playwright.
+  if (process.platform === 'darwin' && process.env.CI === 'true') return bootMacOSAppWithoutCdp()
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh Electron acceptance '))
   const diagnosticFile = join(home, 'startup-error.log')
   let app
