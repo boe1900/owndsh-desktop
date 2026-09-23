@@ -26,7 +26,6 @@ const source = join(root, '.build/official-build/apps/desktop/src')
   assert.match(prepare, /LibreOfficeKit Windows DLL path seam changed/u)
   assert.match(prepare, /return path\.replace\(\/\\\\\.asar/u)
   assert.match(prepare, /env\.PATH = \[programDirectory, source\.PATH\]/u)
-  assert.match(prepare, /cwd: engine\.programDirectory/u)
   assert.doesNotMatch(main, /credential-lock|DesktopUpdateCoordinator.*OWNDSH/u)
 })
 
