@@ -10,6 +10,7 @@
 | `OWNDSH-PATCH-WIN-TRAY` | `apps/desktop/src/main.ts` | Windows 关闭窗口隐藏到托盘，托盘菜单交给官方 `app.quit()` 退出。 | 检查主窗口、欢迎窗口和 `will-quit` 生命周期名称。 |
 | `OWNDSH-PATCH-RUNTIME-DEPENDENCY` | `apps/desktop/src/project-manager.ts` | 把 OwnDsh 插件加入官方 `app/dsh` 运行树，确保 profile 播种后能加载。 | 检查 `createRuntimeProjectMetadata()` 仍是运行树唯一依赖清单。 |
 | `OWNDSH-PATCH-PROFILE-SEED` | `apps/desktop/src/project-manager.ts` | 只在首次创建 profile 时写入 `owndsh-plugin` 和版本；用户卸载后不复活。 | 检查 `createPluginProfile()` 仍由官方 `applyRelease()` 调用。 |
+| `OWNDSH-PATCH-SHELL-RUNTIME` | `apps/desktop/package.json` | 把主进程实际导入的 `@deepseek-ai/dsh-home-paths` 从官方 `devDependencies` 提升为生产依赖，交给官方打包器纳入 `app.asar` 依赖闭包。 | 检查官方仍以 `workspace:^` 声明该运行时包；若官方主进程改为内联或改名，删除此接缝。 |
 | `OWNDSH-PACKAGING` | `apps/desktop/scripts/package-target.ts`、`desktop-package-environment.mjs`、`prepare-dsh.ts` | 保留官方完整准备、运行树校验、electron-builder 和 smoke，但允许社区包在没有官方签名/更新服务凭据时使用 unsigned 发行流程。 | 只影响构建时；正式签名环境仍可走官方 signed 分支。 |
 | `OWNDSH-PACKAGING` | `apps/desktop/scripts/electron-builder-config.mjs`、`smoke-packaged-runtime.ts` | 使用 OwnDsh 独立应用名、包名、图标和可执行文件名；不改 Host、认证或 Web 行为。 | 检查官方 builder 配置仍是唯一打包配置。 |
 | `OWNDSH-PACKAGING` | `desktop-app.test.mjs` | macOS/Windows GitHub runner 缺少 Playwright 所需的 Electron CDP 时，直接启动安装包做启动诊断；本机和 Linux 仍执行完整窗口验收。 | 官方 runner 提供稳定 Electron CDP 后，可恢复对应平台的 Playwright 验收。 |
