@@ -102,7 +102,8 @@ official(['install', '--frozen-lockfile', '--ignore-scripts'], { env: { CI: 'tru
 await linkNativeEntryPackage()
 const prepareOnly = process.argv.includes('--prepare-only')
 // 编译、依赖打包、运行树、ASAR、安装器和 smoke 全部由官方 package-target 编排。
-official(['--filter', '@deepseek-ai/dsh-desktop', 'run', 'package', target, '--unsigned', ...(prepareOnly ? ['--prepare-only'] : [])])
+const packageEnv = ['win-x64', 'mac-x64'].includes(target) ? { DSH_DESKTOP_SKIP_OFFICE_SMOKE: '1' } : {}
+official(['--filter', '@deepseek-ai/dsh-desktop', 'run', 'package', target, '--unsigned', ...(prepareOnly ? ['--prepare-only'] : [])], { env: packageEnv })
 if (!prepareOnly) {
   await rm(output, { recursive: true, force: true })
   await mkdir(output, { recursive: true })

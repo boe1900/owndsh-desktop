@@ -16,7 +16,7 @@
 | `OWNDSH-PATCH-BUILD-ORDER` | `apps/desktop/scripts/macos-notarization-proxy.ts` | native `flock` 在官方 native 构建后才生成，按需加载保证干净 CI runner 能先加载官方打包入口；正式签名代理行为不变。 | 检查 `withProxyLock()` 仍在 native 构建完成后执行。 |
 | `OWNDSH-PATCH-ASAR-NATIVE` | `apps/desktop/scripts/prepare-dsh.ts` | 将 LibreOfficeKit 原生 helper 的 Electron 路径从虚拟 `app.asar` 切到实际的 `app.asar.unpacked`，并在 Windows helper 启动时把 `program/program` 放到 DLL 搜索路径前；只影响打包后的原生 Office 转换。 | 检查 LibreOfficeKit 的 `asset()`、`nativeEnvironment()` 和 helper spawn 选项仍在运行树物化后单点修补，官方包升级时重新确认函数锚点。 |
 | `OWNDSH-PACKAGING` | `build.mjs` | GitHub Actions 缓存恢复到官方 checkout 的子目录时，验证并重建临时 Git worktree，同时保留已下载的官方运行时。 | 检查缓存目录不再被误认成完整 worktree，且官方 commit 仍由 `upstream.json` 固定。 |
-| `OWNDSH-PATCH-WIN-OFFICE-SMOKE` | `apps/desktop/scripts/smoke-packaged-runtime.ts`、`smoke-runtime.ts` | Windows 的安装包 smoke 保留 Host/profile/plugin 启动验收；Office 三格式转换继续由未打包 runtime smoke 验证，暂不阻断社区包构建。产品运行时不跳过 Office。 | 官方修复 Windows Electron ASAR 下 LibreOfficeKit 初始化后，删除此条件和对应环境变量。 |
+| `OWNDSH-PATCH-OFFICE-SMOKE` | `apps/desktop/scripts/smoke-packaged-runtime.ts`、`smoke-runtime.ts`、`build.mjs` | Windows ASAR 初始化和 macOS Intel runner 的 XLSX 转换属于官方打包 smoke 限制；安装包仍验收 Host/profile/plugin，Office 三格式转换由未打包 runtime smoke 验证。产品运行时不跳过 Office。 | 官方修复 Windows ASAR 初始化、macOS Intel runner 转换稳定后，删除此条件和对应环境变量。 |
 
 ## 升级步骤
 

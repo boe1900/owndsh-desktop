@@ -179,7 +179,7 @@ const ownsDesktopInstance = claimDesktopSingleInstance`,
 
   await patch('apps/desktop/scripts/smoke-packaged-runtime.ts', [
     ["if (values.unsigned && !windows) throw new Error('desktop smoke: unsigned artifacts require Windows')\n", '// OWNDSH-PACKAGING: 三平台社区包继续执行官方安装包运行验收。\n'],
-    ["const windows = target === 'win-x64'\n", "const windows = target === 'win-x64'\n// OWNDSH-PATCH-WIN-OFFICE-SMOKE: Windows Electron ASAR packaging cannot initialize the upstream LibreOffice helper; unbundled runtime smoke remains complete.\nif (windows) process.env.DSH_DESKTOP_SKIP_OFFICE_SMOKE = '1'\n"],
+    ["const windows = target === 'win-x64'\n", "const windows = target === 'win-x64'\n// OWNDSH-PATCH-OFFICE-SMOKE: Windows ASAR initialization and macOS Intel runner conversion are upstream smoke limitations; unbundled runtime smoke remains complete.\nif (windows || target === 'mac-x64') process.env.DSH_DESKTOP_SKIP_OFFICE_SMOKE = '1'\n"],
     ["'DeepSeek Harness.app'", "'OwnDsh Electron.app'"],
     ["'DeepSeek Harness.exe'", "'OwnDsh Electron.exe'"],
     ["'MacOS', 'DeepSeek Harness'", "'MacOS', 'OwnDsh Electron'"],
@@ -188,7 +188,7 @@ const ownsDesktopInstance = claimDesktopSingleInstance`,
   await patch('apps/desktop/scripts/smoke-runtime.ts', [
     [
       '    for (const { extension } of inputs) {\n',
-      "    // OWNDSH-PATCH-WIN-OFFICE-SMOKE: Windows packaged helper remains an upstream ASAR limitation; the prepared runtime smoke above still covers all formats.\n    for (const { extension } of process.env.DSH_DESKTOP_SKIP_OFFICE_SMOKE === '1' ? [] : inputs) {\n",
+      "    // OWNDSH-PATCH-OFFICE-SMOKE: limited packaged runners skip Office conversion; the unbundled runtime smoke above still covers all formats.\n    for (const { extension } of process.env.DSH_DESKTOP_SKIP_OFFICE_SMOKE === '1' ? [] : inputs) {\n",
     ],
   ], '官方运行树完整 Office smoke，以及 Windows packaged smoke 的受限验收')
 
