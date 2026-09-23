@@ -133,7 +133,7 @@ const ownsDesktopInstance = claimDesktopSingleInstance`,
     const officeSource = readFileSync(officeAdapter, 'utf8')
     const asarPatched = officeSource.replace(
       ${JSON.stringify('\treturn path;\n}\nfunction glibcVersion')},
-      ${JSON.stringify("\treturn process.versions.electron === undefined ? path : path.replace(/\\.asar([\\\\/])/u, '.asar.unpacked$1');\n}\nfunction glibcVersion")},
+      ${JSON.stringify("\treturn path.replace(/\\.asar([\\\\/])/u, '.asar.unpacked$1');\n}\nfunction glibcVersion")},
     )
     if (asarPatched === officeSource) throw new Error('desktop runtime: LibreOfficeKit ASAR path seam changed')
     const officePatched = asarPatched.replace(
