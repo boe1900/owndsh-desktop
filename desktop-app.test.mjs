@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 实际打包 Electron 可执行文件、临时独立用户目录与 Playwright Electron 驱动
  * [OUTPUT]: 验证运行树、原生模块/文档转换、独立数据目录、插件预装与卸载，失败时输出官方启动诊断
- * [POS]: 安装包实际窗口与 Host 的端到端验收，运行时不接触用户真实数据
+ * [POS]: 安装包实际窗口与 Host 的端到端验收；CI macOS/Windows 用直接进程启动规避 runner 的 Electron CDP 限制
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import assert from 'node:assert/strict'
@@ -16,7 +16,7 @@ import { promisify } from 'node:util'
 const executablePath = process.env.OWNDSH_TEST_APP
 assert.ok(executablePath, 'Set OWNDSH_TEST_APP to the actual packaged Electron executable')
 
-async function bootMacOSAppWithoutCdp() {
+async function bootPackagedAppWithoutCdp() {
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh Electron boot '))
   const diagnosticFile = join(home, 'startup-error.log')
   const child = spawn(executablePath, ['--enable-logging=stderr', '--disable-gpu', '--no-sandbox'], {
@@ -40,8 +40,8 @@ async function bootMacOSAppWithoutCdp() {
 }
 
 test('packaged official desktop boots beta.10 with an isolated profile and preinstalled plugin', { timeout: 300000 }, async () => {
-  // GitHub macOS runners expose Node Inspector but not Electron CDP to Playwright.
-  if (process.platform === 'darwin' && process.env.CI === 'true') return bootMacOSAppWithoutCdp()
+  // OWNDSH-PACKAGING: GitHub macOS/Windows runners expose Node Inspector but not Electron CDP to Playwright.
+  if (process.env.CI === 'true' && process.platform !== 'linux') return bootPackagedAppWithoutCdp()
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh Electron acceptance '))
   const diagnosticFile = join(home, 'startup-error.log')
   let app
