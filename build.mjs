@@ -64,7 +64,7 @@ async function linkNativeEntryPackage() {
   if (process.platform !== 'darwin') return
   const name = `@deepseek-ai/node-addon-system-darwin-${process.arch}`
   const link = join(checkout, 'native/system/packages/entry/node_modules', name)
-  // OWNDSH-PACKAGING: pnpm --no-optional 不会链接当前平台包；官方 pack 只需要这一个 workspace link。
+  // OWNDSH-PACKAGING: 官方 pack 解析 workspace 协议前，确保当前平台包的链接存在。
   await mkdir(dirname(link), { recursive: true })
   await rm(link, { recursive: true, force: true })
   await symlink(`../../../darwin-${process.arch}`, link, 'dir')
@@ -81,7 +81,8 @@ if (!prepareOnly) {
   await rm(output, { recursive: true, force: true })
   await mkdir(output, { recursive: true })
   const artifacts = join(checkout, 'apps/desktop/.desktop-build/targets', target, 'unsigned-artifacts')
-  await cp(artifacts, output, { recursive: true })
+  // OWNDSH-PACKAGING: 保留 framework 符号链接；解析后会破坏签名结构。
+  await cp(artifacts, output, { recursive: true, verbatimSymlinks: true })
   await writeFile(join(output, 'build-info-official.json'), `${JSON.stringify({
     app: manifest.version,
     shell: 'official-electron',

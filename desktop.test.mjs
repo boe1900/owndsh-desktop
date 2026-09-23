@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { build } from 'esbuild'
 import { tmpdir } from 'node:os'
+import { pathToFileURL } from 'node:url'
 
 const root = import.meta.dirname
 const source = join(root, '.build/official-build/apps/desktop/src')
@@ -35,7 +36,7 @@ test('first profile enables beta.10 once and preserves explicit uninstall', asyn
   await writeFile(entry, compiled.outputFiles[0].text)
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh profile '))
   try {
-    const { createPluginProfile } = await import(`file://${entry}`)
+    const { createPluginProfile } = await import(pathToFileURL(entry).href)
     createPluginProfile(home)
     const path = join(home, 'package.json')
     const initial = JSON.parse(await readFile(path, 'utf8'))

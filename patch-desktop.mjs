@@ -125,6 +125,20 @@ const ownsDesktopInstance = claimDesktopSingleInstance`,
 
   await patch('apps/desktop/scripts/prepare-dsh.ts', [
     ["    if (process.platform === 'darwin') {", "    // OWNDSH-PACKAGING: 社区包保留依赖原始字节；外层 app 由 builder 作 ad-hoc 签名。\n    if (process.platform === 'darwin' && process.env.DSH_DESKTOP_UNSIGNED !== '1') {"],
+    [
+      "    })\n    writeFileSync(join(DSH_OUTPUT_ROOT, 'package.json'),",
+      `    })
+    // OWNDSH-PATCH-ASAR-NATIVE: Electron 的 app.asar 只提供虚拟读取；原生 LO helper 必须从 app.asar.unpacked 启动。
+    const officeAdapter = join(DSH_OUTPUT_ROOT, 'node_modules', '@deepseek-ai', 'libreoffice-kit', 'lib', 'index.js')
+    const officeSource = readFileSync(officeAdapter, 'utf8')
+    const officePatched = officeSource.replace(
+      '\\treturn path;\\n}\\nfunction glibcVersion',
+      '\\treturn process.versions.electron === undefined ? path : path.replace(/\\\\.asar([\\\\/])/u, \\'.asar.unpacked$1\\')\\n}\\nfunction glibcVersion',
+    )
+    if (officePatched === officeSource) throw new Error('desktop runtime: LibreOfficeKit ASAR path seam changed')
+    writeFileSync(officeAdapter, officePatched)
+    writeFileSync(join(DSH_OUTPUT_ROOT, 'package.json'),`,
+    ],
   ], '官方 dsh 准备流程支持无 Developer ID 的社区包')
 
   await patch('apps/desktop/scripts/macos-notarization-proxy.ts', [

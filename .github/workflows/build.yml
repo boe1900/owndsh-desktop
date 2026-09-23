@@ -44,7 +44,7 @@ jobs:
           npm ci --prefix runtime --ignore-scripts
       - uses: actions/cache@v4
         with:
-          path: .build/primary-downloads
+          path: .build/official-build/apps/desktop/.desktop-build/downloads
           key: primary-runtime-${{ matrix.name }}-${{ hashFiles('upstream.json') }}
       - name: Build official desktop
         run: npm run build
