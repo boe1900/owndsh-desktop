@@ -1,187 +1,100 @@
 /**
- * [INPUT]: upstream.json 固定官方源码、npm 双锁、OwnDsh 图标与原生构建机
- * [OUTPUT]: 官方 Electron Desktop + Harness + 插件的离线安装包及版本/摘要清单
- * [POS]: OwnDsh 发行编排；复用官方窗口、Host、primary-runtime 和运行树校验
+ * [INPUT]: 官方 Harness tag、OwnDsh runtime lock 与原生构建机
+ * [OUTPUT]: 官方 Desktop 原生运行树、Electron 安装包和构建清单
+ * [POS]: 发行入口；只准备官方 checkout、应用 OWNDSH-PATCH 接缝并调用官方脚本
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
-import { createRequire } from 'node:module'
-import { chmod, cp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { dirname, join, relative } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
-import { build } from 'esbuild'
+import { createHash } from 'node:crypto'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { patchDesktop, patchNativeEntry } from './patch-desktop.mjs'
 import sharp from 'sharp'
-import { patchDesktop } from './patch-desktop.mjs'
 
 const root = dirname(fileURLToPath(import.meta.url))
-const windows = process.platform === 'win32'
-assert.ok(windows ? process.arch === 'x64' : process.platform === 'darwin' && ['x64', 'arm64'].includes(process.arch), 'Use a native macOS/Windows builder')
-const require = createRequire(import.meta.url)
 const upstream = JSON.parse(await readFile(join(root, 'upstream.json'), 'utf8'))
 const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const runtimeManifest = JSON.parse(await readFile(join(root, 'runtime/package.json'), 'utf8'))
-const run = (command, args, options = {}) => execFileSync(command, args, { cwd: root, stdio: 'inherit', ...options })
-const json = (path, value) => writeFile(path, JSON.stringify(value, null, 2) + '\n')
 const cache = join(root, '.build/official-harness')
-const source = join(root, '.build/electron-source')
-const app = join(root, '.build/electron-app')
-const resources = join(root, '.build/electron-resources')
+const checkout = join(root, '.build/official-build')
 const output = join(root, 'dist/electron')
+const pnpm = join(root, 'node_modules/pnpm/bin/pnpm.cjs')
+const pluginVersion = runtimeManifest.dependencies['owndsh-plugin']
+const target = process.platform === 'darwin' ? `mac-${process.arch}` : process.platform === 'win32' ? 'win-x64' : ''
+assert.ok(['mac-x64', 'mac-arm64', 'win-x64'].includes(target), 'Use a native macOS/Windows builder')
+assert.equal(manifest.version, runtimeManifest.dependencies['@deepseek-ai/dsh'])
 
-await mkdir(join(root, '.build'), { recursive: true })
-if (!existsSync(cache)) run('git', ['clone', '--depth', '1', '--branch', upstream.tag, upstream.repository, cache])
-assert.equal(run('git', ['rev-parse', 'HEAD'], { cwd: cache, stdio: 'pipe', encoding: 'utf8' }).trim(), upstream.commit)
-assert.equal(run('git', ['status', '--porcelain'], { cwd: cache, stdio: 'pipe', encoding: 'utf8' }).trim(), '', 'Cached upstream source must stay clean')
-await rm(source, { recursive: true, force: true })
-for (const name of ['desktop', 'desktop-host']) {
-  await cp(join(cache, 'apps', name), join(source, 'apps', name), { recursive: true })
-}
-// 源码辅助脚本从已锁定 npm 运行树解析 Host 包，工具仍从根 node_modules 解析。
-await symlink(join(root, 'runtime/node_modules'), join(source, 'node_modules'), windows ? 'junction' : 'dir')
-await patchDesktop(source, runtimeManifest.dependencies['owndsh-plugin'])
-await cp(join(root, 'credential-lock.mjs'), join(source, 'apps/desktop/src/credential-lock.mjs'))
-await rm(app, { recursive: true, force: true })
-await mkdir(app, { recursive: true })
-const modules = join(root, 'runtime/node_modules')
-const { desktopRuntimeFileExclusion } = await import(pathToFileURL(join(source, 'apps/desktop/scripts/runtime-file-policy.ts')))
-await cp(modules, join(app, 'node_modules'), {
-  recursive: true, dereference: true,
-  filter: path => {
-    const entry = relative(modules, path).replaceAll('\\', '/')
-    const conptyArch = entry.match(/^node-pty\/third_party\/conpty\/[^/]+\/win10-([^/]+)/)?.[1]
-    // 构建输入也携带 ConPTY 多架构副本；发行只保留目标系统可用的文件。
-    if (conptyArch && (!windows || conptyArch !== process.arch)) return false
-    return desktopRuntimeFileExclusion(entry, process, `${process.platform}-${process.arch}`) === undefined
-  },
+const run = (command, args, options = {}) => execFileSync(command, args, {
+  cwd: root,
+  stdio: 'inherit',
+  ...options,
+  env: { ...process.env, ...options.env },
 })
-// 所有核心包必须来自同一 Harness 发布，防止 npm 带入第二套 Host 单例。
-const sharedNames = []
-for (const name of await readdir(join(app, 'node_modules/@deepseek-ai'))) {
-  const pkg = JSON.parse(await readFile(join(app, 'node_modules/@deepseek-ai', name, 'package.json'), 'utf8'))
-  if (name === 'dsh' || name.startsWith('dsh-')) assert.equal(pkg.version, manifest.version, `Unexpected ${pkg.name} version`)
-  sharedNames.push(pkg.name)
-}
-assert.equal(JSON.parse(await readFile(join(app, 'node_modules/owndsh-plugin/package.json'), 'utf8')).version, '0.1.0-beta.8')
-const sourceDesktop = join(source, 'apps/desktop')
-const sourceHost = join(source, 'apps/desktop-host')
-await mkdir(join(sourceDesktop, '.desktop-build'), { recursive: true })
-await mkdir(join(root, '.build/primary-downloads'), { recursive: true })
-await symlink(join(root, '.build/primary-downloads'), join(sourceDesktop, '.desktop-build/downloads'), windows ? 'junction' : 'dir')
-const compile = (entry, outfile, format = 'esm') => build({
-  entryPoints: [entry], outfile, bundle: true, platform: 'node', format, target: 'es2024',
-  packages: 'external', tsconfigRaw: {}, logLevel: 'info',
-})
-await compile(join(sourceDesktop, 'src/main.ts'), join(app, 'lib/main.js'))
-for (const name of ['preload-app', 'preload-mandatory', 'preload-update-dialog']) {
-  await compile(join(sourceDesktop, 'src', `${name}.ts`), join(app, 'lib', `${name}.cjs`), 'cjs')
-}
-const privateHost = join(app, 'node_modules/@deepseek-ai/dsh-desktop-host')
-await mkdir(privateHost, { recursive: true })
-await json(join(privateHost, 'package.json'), { name: '@deepseek-ai/dsh-desktop-host', version: manifest.version, private: true, type: 'module', main: 'lib/index.js' })
-await compile(join(sourceHost, 'src/index.ts'), join(privateHost, 'lib/index.js'))
-sharedNames.push('@deepseek-ai/dsh-desktop-host')
-const bridge = join(app, 'node_modules/@owndsh/desktop-bridge')
-await mkdir(bridge, { recursive: true })
-await cp(join(root, 'plugin-bridge.mjs'), join(bridge, 'index.mjs'))
-await json(join(bridge, 'package.json'), { name: '@owndsh/desktop-bridge', version: manifest.version, type: 'module', main: 'index.mjs', private: true })
-await writeFile(join(app, 'owndsh-desktop.patch.yml'), "- insert:\n    - id: owndsh-desktop-bridge\n      name: '@owndsh/desktop-bridge'\n- id: owndsh\n  inject: [desktopProfiles, desktopPnpm]\n")
-await cp(join(sourceDesktop, 'renderer'), join(app, 'renderer'), { recursive: true })
-await cp(join(cache, 'LICENSE'), join(app, 'HARNESS-LICENSE'))
-await cp(join(cache, 'THIRD_PARTY_NOTICES.md'), join(app, 'HARNESS-THIRD-PARTY-NOTICES.md'))
-await cp(join(root, 'LICENSE'), join(app, 'LICENSE'))
-await json(join(app, 'package.json'), {
-  name: 'owndsh-official-desktop', version: manifest.version, private: true, type: 'module',
-  description: manifest.description, author: 'OwnDsh contributors', license: manifest.license, main: 'lib/main.js',
-  dependencies: { ...runtimeManifest.dependencies, '@deepseek-ai/dsh-desktop-host': manifest.version, '@owndsh/desktop-bridge': manifest.version },
-})
-// 复用官方带哈希的 Python/Node/Office 下载锁及其 smoke，不裁掉 Desktop 功能。
-await compile(join(sourceDesktop, 'scripts/prepare-primary-runtime.ts'), join(sourceDesktop, 'scripts/prepare-primary-runtime.mjs'))
-run(process.execPath, [join(sourceDesktop, 'scripts/prepare-primary-runtime.mjs')])
-const target = `${windows ? 'win' : 'mac'}-${process.arch}`
-await rm(resources, { recursive: true, force: true })
-await cp(join(sourceDesktop, '.desktop-build/targets', target, 'runtime'), resources, { recursive: true, dereference: true })
-await cp(join(root, 'runtime/node_modules/pnpm'), join(resources, 'pnpm'), { recursive: true, dereference: true })
-await cp(join(sourceDesktop, 'scripts/node-bin'), join(resources, 'bin'), { recursive: true })
-if (!windows) await chmod(join(resources, 'bin/node'), 0o755)
+const official = (args, options = {}) => run(process.execPath, [pnpm, '--dir', checkout, ...args], options)
 
-const icon = join(resources, 'icon.png')
-const mask = Buffer.from('<svg width="1024" height="1024"><rect width="1024" height="1024" rx="224" fill="white"/></svg>')
-const rounded = await sharp(join(root, 'assets/icon.png')).resize(1024, 1024).ensureAlpha().composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer()
-const graphic = sharp(rounded)
-if (!windows) graphic.resize(840, 840).extend({ top: 92, bottom: 92, left: 92, right: 92, background: '#00000000' })
-await graphic.png().toFile(icon)
-
-const electron = require('electron')
-const nodeVersion = run(electron, ['-p', 'process.versions.node'], { stdio: 'pipe', encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } }).trim()
-const runtimeTools = join(sourceDesktop, 'src/runtime-tree.mjs')
-await compile(join(sourceDesktop, 'src/runtime-tree.ts'), runtimeTools)
-const { writeDesktopRuntime, verifyDesktopRuntime } = await import(pathToFileURL(runtimeTools))
-const { DESKTOP_HOST_PROTOCOL_VERSION } = await import(pathToFileURL(join(sourceDesktop, 'src/host-protocol.ts')))
-// 单一 npm 树放在 app 根；官方主进程和私有 Host 都使用它，避免复制单例包。
-const descriptor = writeDesktopRuntime(app, { schemaVersion: 1, version: manifest.version, hostProtocolVersion: DESKTOP_HOST_PROTOCOL_VERSION,
-  nodeVersion, pnpmVersion: runtimeManifest.dependencies.pnpm }, sharedNames)
-await verifyDesktopRuntime(app, manifest.version)
-await mkdir(output, { recursive: true })
-const label = `${windows ? 'windows' : 'macos'}-${process.arch}`
-const lock = JSON.parse(await readFile(join(root, 'runtime/package-lock.json'), 'utf8'))
-await json(join(output, `build-info-${label}.json`), {
-  app: manifest.version, shell: 'official-electron', electron: manifest.devDependencies.electron,
-  harness: runtimeManifest.dependencies['@deepseek-ai/dsh'], harnessCommit: upstream.commit,
-  plugin: runtimeManifest.dependencies['owndsh-plugin'], pluginIntegrity: lock.packages['node_modules/owndsh-plugin'].integrity,
-  node: nodeVersion, platform: process.platform, arch: process.arch,
-  automaticUpdates: false, mandatoryUpdates: false,
-  runtimeLockSha256: createHash('sha256').update(await readFile(join(root, 'runtime/package-lock.json'))).digest('hex'),
-  sourceCommit: process.env.GITHUB_SHA ?? run('git', ['rev-parse', 'HEAD'], { stdio: 'pipe', encoding: 'utf8' }).trim(),
-  sourceDirty: run('git', ['status', '--porcelain'], { stdio: 'pipe', encoding: 'utf8' }).trim() !== '',
-})
-if (process.argv.includes('--prepare-only')) {
-  process.stdout.write(`Prepared official Desktop at ${app}\n`)
-} else {
-  const { build: packageApp, Platform } = await import('electron-builder')
-  const sealPackage = async context => {
-    const runtime = join(context.packager.getResourcesDir(context.appOutDir), 'app')
-    writeDesktopRuntime(runtime, descriptor.release, sharedNames)
-    await verifyDesktopRuntime(runtime, manifest.version)
+async function prepareCheckout() {
+  await mkdir(join(root, '.build'), { recursive: true })
+  if (!existsSync(cache)) run('git', ['clone', '--depth', '1', '--branch', upstream.tag, upstream.repository, cache])
+  // 缓存只下载官方源码；OwnDsh 修改全部放进独立的构建 worktree。
+  run('git', ['-C', cache, 'fetch', '--depth', '1', 'origin', 'tag', upstream.tag])
+  assert.equal(run('git', ['-C', cache, 'rev-parse', `${upstream.tag}^{commit}`], { stdio: 'pipe', encoding: 'utf8' }).trim(), upstream.commit)
+  run('git', ['-C', cache, 'sparse-checkout', 'disable'])
+  if (!existsSync(checkout)) run('git', ['-C', cache, 'worktree', 'add', '--detach', checkout, upstream.commit])
+  else {
+    run('git', ['-C', checkout, 'reset', '--hard', upstream.commit])
+    run('git', ['-C', checkout, 'clean', '-fd'])
   }
-  const artifacts = await packageApp({
-    targets: (windows ? Platform.WINDOWS : Platform.MAC).createTarget(windows ? 'nsis' : 'dmg'),
-    publish: 'never',
-    config: {
-      appId: 'com.owndsh.desktop.electron', productName: 'OwnDsh Electron',
-      electronVersion: manifest.devDependencies.electron,
-      directories: { app, output, buildResources: resources },
-      artifactName: `OwnDsh-Electron-${manifest.version}-${label}.` + '${ext}',
-      // 官方运行树已完成解析；禁止 builder 再裁剪 peer 依赖。
-      beforeBuild: async () => false,
-      files: ['**/*', { from: join(app, 'node_modules'), to: 'node_modules', filter: ['**/*'] }],
-      // 官方 LibreOffice helper 用 spawn + programDirectory，必须保留真实目录。
-      asar: false,
-      extraResources: [{ from: resources, to: 'runtime' }, { from: icon, to: 'icon.png' }],
-      publish: null,
-      afterSign: async context => {
-        // 原生签名会改变文件字节；更新最终清单后重新封印外层 App。
-        await sealPackage(context)
-        if (windows) return
-        const bundle = join(context.appOutDir, 'OwnDsh Electron.app')
-        run('codesign', ['--force', '--sign', '-', '--preserve-metadata=entitlements', bundle])
-        run('codesign', ['--verify', '--deep', '--strict', bundle])
-      },
-      mac: { icon, identity: '-', hardenedRuntime: false, notarize: false, category: 'public.app-category.developer-tools',
-        // 上游只携带 LibreOffice 库，非完整 App；内部 Mach-O 仍逐个签名。
-        signIgnore: ['LibreOfficeDev\\.app$'],
-      },
-      dmg: { sign: false, writeUpdateInfo: false },
-      win: { icon, signAndEditExecutable: true },
-      nsis: { oneClick: false, perMachine: false, allowToChangeInstallationDirectory: true, deleteAppDataOnUninstall: false, differentialPackage: false },
-    },
-  })
-  const sums = []
-  for (const path of artifacts.filter(path => /\.(dmg|exe)$/.test(path))) {
-    sums.push(`${createHash('sha256').update(await readFile(path)).digest('hex')}  ${path.split(/[\\/]/).at(-1)}`)
-  }
-  assert.ok(sums.length, 'No installer produced')
-  await writeFile(join(output, `SHA256SUMS-${label}.txt`), sums.join('\n') + '\n')
+  await patchDesktop(checkout, pluginVersion)
+  await patchNativeEntry(checkout)
+  // 官方仓库包含大量与 Desktop 无关的可选 CLI 二进制；关闭 optional 安装避免跨平台下载。
+  // native/system 的目标包已由 patchNativeEntry 收窄到当前平台，随后只单独链接它。
+  await writeFile(join(checkout, '.npmrc'), 'optional=false\n')
+  await writeFile(join(checkout, `apps/desktop/.env.${process.platform === 'darwin' ? 'macos' : 'windows'}`),
+    'DSH_DESKTOP_APP_ID=com.owndsh.desktop.electron\n')
+  const mask = Buffer.from('<svg width="1024" height="1024"><rect width="1024" height="1024" rx="224" fill="white"/></svg>')
+  const icon = await sharp(join(root, 'assets/icon.png')).resize(1024, 1024).ensureAlpha()
+    .composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer()
+  await sharp(icon).toFile(join(checkout, 'apps/desktop/resources/icon-windows.png'))
+  await sharp(icon).resize(840, 840).extend({ top: 92, bottom: 92, left: 92, right: 92, background: '#00000000' })
+    .toFile(join(checkout, 'apps/desktop/resources/icon-macos.png'))
+  await writeFile(join(root, '.build/owndsh-upstream.diff'), run('git', ['-C', checkout, 'diff', '--', 'apps/desktop'], { stdio: 'pipe' }))
+}
+
+async function linkNativeEntryPackage() {
+  if (process.platform !== 'darwin') return
+  const name = `@deepseek-ai/node-addon-system-darwin-${process.arch}`
+  const link = join(checkout, 'native/system/packages/entry/node_modules', name)
+  // OWNDSH-PACKAGING: pnpm --no-optional 不会链接当前平台包；官方 pack 只需要这一个 workspace link。
+  await mkdir(dirname(link), { recursive: true })
+  await rm(link, { recursive: true, force: true })
+  await symlink(`../../../darwin-${process.arch}`, link, 'dir')
+}
+
+await prepareCheckout()
+if (process.argv.includes('--source-only')) process.exit(0)
+official(['install', '--frozen-lockfile', '--ignore-scripts', '--no-optional'], { env: { CI: 'true' } })
+await linkNativeEntryPackage()
+const prepareOnly = process.argv.includes('--prepare-only')
+// 编译、依赖打包、运行树、ASAR、安装器和 smoke 全部由官方 package-target 编排。
+official(['--filter', '@deepseek-ai/dsh-desktop', 'run', 'package', target, '--unsigned', ...(prepareOnly ? ['--prepare-only'] : [])])
+if (!prepareOnly) {
+  await rm(output, { recursive: true, force: true })
+  await mkdir(output, { recursive: true })
+  const artifacts = join(checkout, 'apps/desktop/.desktop-build/targets', target, 'unsigned-artifacts')
+  await cp(artifacts, output, { recursive: true })
+  await writeFile(join(output, 'build-info-official.json'), `${JSON.stringify({
+    app: manifest.version,
+    shell: 'official-electron',
+    harness: runtimeManifest.dependencies['@deepseek-ai/dsh'],
+    harnessCommit: upstream.commit,
+    plugin: pluginVersion,
+    target,
+  }, null, 2)}\n`)
+  const installers = (await readdir(output)).filter(name => /\.(dmg|zip|exe)$/.test(name))
+  assert.ok(installers.length, 'Official packaging produced no installer')
+  const sums = await Promise.all(installers.map(async name => `${createHash('sha256').update(await readFile(join(output, name))).digest('hex')}  ${name}`))
+  await writeFile(join(output, `SHA256SUMS-${target}.txt`), sums.join('\n') + '\n')
 }

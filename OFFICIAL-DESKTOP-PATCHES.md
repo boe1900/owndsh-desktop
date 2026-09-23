@@ -1,0 +1,30 @@
+# Official Desktop patch ledger
+
+本仓库从 `upstream.json` 固定的 DeepSeek Harness tag 生成一个临时官方 checkout。`patch-desktop.mjs` 是唯一的 OwnDsh 发行接缝；不要直接修改 `.build/official-harness` 或 `.build/electron-source`，它们每次构建都会重新生成。
+
+## 当前接缝
+
+| 标记 | 官方文件 | 目的 | 升级检查 |
+| --- | --- | --- | --- |
+| `OWNDSH-PATCH-DATA-ROOT` | `apps/desktop/src/main.ts` | 把 Electron `userData` 和 Harness `DSH_HOME` 放到 OwnDsh 独立根目录，使官方 Desktop、Pake 和 OwnDsh 共存。 | 检查官方单实例初始化前仍可设置两个路径。 |
+| `OWNDSH-PATCH-WIN-TRAY` | `apps/desktop/src/main.ts` | Windows 关闭窗口隐藏到托盘，托盘菜单交给官方 `app.quit()` 退出。 | 检查主窗口、欢迎窗口和 `will-quit` 生命周期名称。 |
+| `OWNDSH-PATCH-RUNTIME-DEPENDENCY` | `apps/desktop/src/project-manager.ts` | 把 OwnDsh 插件加入官方 `app/dsh` 运行树，确保 profile 播种后能加载。 | 检查 `createRuntimeProjectMetadata()` 仍是运行树唯一依赖清单。 |
+| `OWNDSH-PATCH-PROFILE-SEED` | `apps/desktop/src/project-manager.ts` | 只在首次创建 profile 时写入 `owndsh-plugin` 和版本；用户卸载后不复活。 | 检查 `createPluginProfile()` 仍由官方 `applyRelease()` 调用。 |
+| `OWNDSH-PACKAGING` | `apps/desktop/scripts/package-target.ts`、`desktop-package-environment.mjs`、`prepare-dsh.ts` | 保留官方完整准备、运行树校验、electron-builder 和 smoke，但允许社区包在没有官方签名/更新服务凭据时使用 unsigned 发行流程。 | 只影响构建时；正式签名环境仍可走官方 signed 分支。 |
+| `OWNDSH-PACKAGING` | `apps/desktop/scripts/electron-builder-config.mjs`、`smoke-packaged-runtime.ts` | 使用 OwnDsh 独立应用名、包名、图标和可执行文件名；不改 Host、认证或 Web 行为。 | 检查官方 builder 配置仍是唯一打包配置。 |
+
+## 升级步骤
+
+1. 修改 `upstream.json` 的 `tag` 和不可变 `commit`。
+2. 运行 `npm run prepare:runtime`。补丁接缝不匹配时会立即失败，不要放宽断言。
+3. 阅读新生成源码中 `OWNDSH-PATCH-*` 和 `OWNDSH-PACKAGING` 标记，确认官方上下文没有改变。
+4. 运行 `npm test`；在目标机器再运行 `npm run build` 和 `npm run test:app`。
+5. 只在官方功能已覆盖且用户明确要求时增加接缝。不要恢复 Pake bridge、Host 路径/端口改写、凭据锁或自定义 updater。
+
+官方构建路径由 `apps/desktop/scripts/package-target.ts` 负责；本仓库的 `build.mjs` 只调用官方构建阶段，不复制或重写 electron-builder 配置。
+
+## 构建依赖提示
+
+`build.mjs` 会让官方 install 使用 `--no-optional`，关闭与 Desktop 无关的跨平台 optional CLI 包下载。install 前，`patchNativeEntry()` 将 `native/system/packages/entry` 的 optional workspace 依赖收窄到当前目标平台，并让 pnpm 更新临时 checkout 的 importer；随后 `linkNativeEntryPackage()` 只建立当前平台的 workspace 链接。这样既避免无关下载，也保证官方 landlock tarball 能找到当前平台的 workspace 包。该文件和修改后的官方 checkout 都属于生成物，每次 checkout 重建都会覆盖。
+
+[PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

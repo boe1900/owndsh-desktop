@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 实际打包 Electron 可执行文件、临时独立用户目录与 Playwright Electron 驱动
- * [OUTPUT]: 验证运行树完整性、原生模块/文档转换、门禁、更新禁用、配置持久化与卸载
+ * [OUTPUT]: 验证运行树完整性、原生模块/文档转换、独立数据目录、插件预装与卸载
  * [POS]: 安装包实际窗口与 Host 的端到端验收，运行时不接触用户真实数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -16,7 +16,7 @@ import { promisify } from 'node:util'
 const executablePath = process.env.OWNDSH_TEST_APP
 assert.ok(executablePath, 'Set OWNDSH_TEST_APP to the actual packaged Electron executable')
 
-test('packaged official desktop boots beta.8, keeps data and uninstalls without login', { timeout: 300000 }, async () => {
+test('packaged official desktop boots beta.10 with an isolated profile and preinstalled plugin', { timeout: 300000 }, async () => {
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh Electron acceptance '))
   let app
   let stderr = ''
@@ -28,7 +28,6 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
   const start = async () => {
     app = await electron.launch({ executablePath, timeout: 60000, env: {
       ...process.env, OWNDSH_DESKTOP_HOME: home, DSH_TELEMETRY_DISABLED: '1',
-      DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: '{"origin":"https://invalid.example"}',
     } })
     app.process().stderr.on('data', chunk => { stderr += chunk })
     const page = await app.firstWindow()
@@ -39,10 +38,10 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
     let page = await start()
     await page.getByRole('dialog', { name: 'OwnDsh', exact: true }).waitFor()
     const appPath = await app.evaluate(({ app }) => app.getAppPath())
-    const { verifyDesktopRuntime, inventoryDesktopRuntime } = await import('./.build/electron-source/apps/desktop/src/runtime-tree.mjs')
-    try { await verifyDesktopRuntime(appPath, '0.1.6-alpha.2') } catch (error) {
-      const expected = JSON.parse(await readFile(join(appPath, 'desktop-runtime.json'), 'utf8')).files
-      const actual = inventoryDesktopRuntime(appPath)
+    const { verifyDesktopRuntime, inventoryDesktopRuntime } = await import('./.build/official-build/apps/desktop/lib/types/runtime-tree.js')
+    try { await verifyDesktopRuntime(join(appPath, 'dsh'), '0.1.7-alpha.1') } catch (error) {
+      const expected = JSON.parse(await readFile(join(appPath, 'dsh/desktop-runtime.json'), 'utf8')).files
+      const actual = inventoryDesktopRuntime(join(appPath, 'dsh'))
       const before = new Map(expected.map(file => [file.path, file]))
       const after = new Map(actual.map(file => [file.path, file]))
       const changed = [...new Set([...before.keys(), ...after.keys()])].filter(path => {
@@ -54,7 +53,7 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
       throw error
     }
     const native = await promisify(execFile)(executablePath, ['--expose-internals',
-      join(import.meta.dirname, '.build/official-harness/apps/desktop/tests/fixtures/runtime-payload-smoke.mjs'), appPath,
+      join(import.meta.dirname, '.build/official-harness/apps/desktop/tests/fixtures/runtime-payload-smoke.mjs'), join(appPath, 'dsh'),
     ], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 120000 })
     assert.match(native.stdout, /"pty":true/)
     await cp(join(import.meta.dirname, '.build/official-harness/packages/bundle/web-app/tests/fixtures/document-conversion.docx'), join(home, 'preview.docx'))
@@ -66,15 +65,19 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
       const converter = await createConverter()
       try { await converter.render({ inputPath: process.argv[2], outputPath: process.argv[3] }) }
       finally { await converter.dispose() }
-    `, appPath, join(home, 'preview.docx'), join(home, 'preview.pdf')], {
+    `, join(appPath, 'dsh'), join(home, 'preview.docx'), join(home, 'preview.pdf')], {
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }, timeout: 150000,
     })
     assert.equal((await readFile(join(home, 'preview.pdf'))).subarray(0, 5).toString(), '%PDF-')
     assert.equal(await page.evaluate(() => typeof Iterator), 'function')
-    assert.equal(await page.evaluate(() => window.dshDesktop.updates), undefined)
-    const profilePath = join(home, 'profiles/desktop/package.json')
+    assert.equal(await page.evaluate(() => typeof window.dshDesktop.updates.status), 'function')
+    const profilePath = join(home, 'Harness/profiles/desktop/package.json')
     let profile = JSON.parse(await readFile(profilePath, 'utf8'))
-    assert.equal(profile.dependencies['owndsh-plugin'], '0.1.0-beta.8')
+    assert.equal(profile.dependencies['owndsh-plugin'], '0.1.0-beta.10')
+    await page.waitForFunction(async () => {
+      const response = await fetch('/enterprise/api/v1/local/status')
+      return response.status === 200
+    })
     const response = await page.evaluate(async () => {
       const r = await fetch('/enterprise/api/v1/local/server', {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ serverUrl: 'http://127.0.0.1:18888' }),
@@ -85,7 +88,7 @@ test('packaged official desktop boots beta.8, keeps data and uninstalls without 
     await stop()
     page = await start()
     await page.getByRole('dialog', { name: 'OwnDsh', exact: true }).waitFor()
-    assert.match(await readFile(join(home, 'settings.yaml'), 'utf8'), /18888/)
+    assert.match(await readFile(join(home, 'Harness/settings.yaml'), 'utf8'), /18888/)
     const removed = await page.evaluate(async () => {
       const r = await fetch('/enterprise/api/v1/local/uninstall', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
       return { status: r.status, body: await r.text() }

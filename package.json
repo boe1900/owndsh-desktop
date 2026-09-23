@@ -1,6 +1,6 @@
 {
   "name": "owndsh-desktop",
-  "version": "0.1.6-alpha.2",
+  "version": "0.1.7-alpha.1",
   "private": true,
   "type": "module",
   "description": "OwnDsh distribution of the official DeepSeek Harness Electron desktop",
@@ -12,16 +12,13 @@
     "prepare:runtime": "node build.mjs --prepare-only",
     "build": "node build.mjs",
     "test": "node --test desktop.test.mjs",
-    "test:app": "node --test desktop-app.test.mjs"
+    "test:app": "node --test desktop-app.test.mjs",
+    "prepare:source": "node build.mjs --source-only"
   },
   "devDependencies": {
-    "electron": "44.0.0",
-    "electron-builder": "26.15.3",
     "esbuild": "0.28.1",
-    "extract-zip": "2.0.1",
-    "tar": "7.5.22",
+    "playwright": "1.58.2",
     "pnpm": "11.7.0",
-    "sharp": "0.35.3",
-    "playwright": "1.58.2"
+    "sharp": "0.35.3"
   }
 }
