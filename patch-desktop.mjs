@@ -37,8 +37,6 @@ ${content}`)
 const ownDshHome = process.env.OWNDSH_DESKTOP_HOME ?? join(app.getPath('appData'), 'com.owndsh.desktop.electron')
 app.setPath('userData', join(ownDshHome, 'electron'))
 process.env.DSH_HOME = join(ownDshHome, 'Harness')
-// OWNDSH-PATCH-TEST-DEBUG: CI app smoke needs a deterministic Chromium endpoint; production has no diagnostic env.
-if (process.env.DSH_DESKTOP_DIAGNOSTIC_FILE !== undefined) app.commandLine.appendSwitch('remote-debugging-port', '9222')
 const ownsDesktopInstance = claimDesktopSingleInstance`,
     ],
     [
