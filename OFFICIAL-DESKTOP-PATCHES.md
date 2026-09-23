@@ -7,6 +7,7 @@
 | 标记 | 官方文件 | 目的 | 升级检查 |
 | --- | --- | --- | --- |
 | `OWNDSH-PATCH-DATA-ROOT` | `apps/desktop/src/main.ts` | 把 Electron `userData` 和 Harness `DSH_HOME` 放到 OwnDsh 独立根目录，使官方 Desktop、Pake 和 OwnDsh 共存。 | 检查官方单实例初始化前仍可设置两个路径。 |
+| `OWNDSH-PATCH-TEST-DEBUG` | `apps/desktop/src/main.ts` | 仅在 CI app smoke 提供诊断文件时固定 Chromium 调试端口；正常发行环境不启用。 | 检查只由 `DSH_DESKTOP_DIAGNOSTIC_FILE` 触发。 |
 | `OWNDSH-PATCH-WIN-TRAY` | `apps/desktop/src/main.ts` | Windows 关闭窗口隐藏到托盘，托盘菜单交给官方 `app.quit()` 退出。 | 检查主窗口、欢迎窗口和 `will-quit` 生命周期名称。 |
 | `OWNDSH-PATCH-RUNTIME-DEPENDENCY` | `apps/desktop/src/project-manager.ts` | 把 OwnDsh 插件加入官方 `app/dsh` 运行树，确保 profile 播种后能加载。 | 检查 `createRuntimeProjectMetadata()` 仍是运行树唯一依赖清单。 |
 | `OWNDSH-PATCH-PROFILE-SEED` | `apps/desktop/src/project-manager.ts` | 只在首次创建 profile 时写入 `owndsh-plugin` 和版本；用户卸载后不复活。 | 检查 `createPluginProfile()` 仍由官方 `applyRelease()` 调用。 |
