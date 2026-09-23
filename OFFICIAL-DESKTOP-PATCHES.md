@@ -13,7 +13,7 @@
 | `OWNDSH-PACKAGING` | `apps/desktop/scripts/package-target.ts`、`desktop-package-environment.mjs`、`prepare-dsh.ts` | 保留官方完整准备、运行树校验、electron-builder 和 smoke，但允许社区包在没有官方签名/更新服务凭据时使用 unsigned 发行流程。 | 只影响构建时；正式签名环境仍可走官方 signed 分支。 |
 | `OWNDSH-PACKAGING` | `apps/desktop/scripts/electron-builder-config.mjs`、`smoke-packaged-runtime.ts` | 使用 OwnDsh 独立应用名、包名、图标和可执行文件名；不改 Host、认证或 Web 行为。 | 检查官方 builder 配置仍是唯一打包配置。 |
 | `OWNDSH-PATCH-BUILD-ORDER` | `apps/desktop/scripts/macos-notarization-proxy.ts` | native `flock` 在官方 native 构建后才生成，按需加载保证干净 CI runner 能先加载官方打包入口；正式签名代理行为不变。 | 检查 `withProxyLock()` 仍在 native 构建完成后执行。 |
-| `OWNDSH-PATCH-ASAR-NATIVE` | `apps/desktop/scripts/prepare-dsh.ts` | 将 LibreOfficeKit 原生 helper 的 Electron 路径从虚拟 `app.asar` 切到实际的 `app.asar.unpacked`，并在 Windows helper 启动时把 `program/program` 放到 DLL 搜索路径前；只影响打包后的原生 Office 转换。 | 检查 LibreOfficeKit 的 `asset()` 和 `nativeEnvironment()` 仍在运行树物化后单点修补，官方包升级时重新确认函数锚点。 |
+| `OWNDSH-PATCH-ASAR-NATIVE` | `apps/desktop/scripts/prepare-dsh.ts` | 将 LibreOfficeKit 原生 helper 的 Electron 路径从虚拟 `app.asar` 切到实际的 `app.asar.unpacked`，并在 Windows helper 启动时把 `program/program` 放到 DLL 搜索路径前、把工作目录设为该目录；只影响打包后的原生 Office 转换。 | 检查 LibreOfficeKit 的 `asset()`、`nativeEnvironment()` 和 helper spawn 选项仍在运行树物化后单点修补，官方包升级时重新确认函数锚点。 |
 
 ## 升级步骤
 

@@ -27,7 +27,9 @@ test('packaged official desktop boots beta.10 with an isolated profile and prein
     try { await app.close() } finally { clearTimeout(deadline); app = undefined }
   }
   const start = async () => {
-    app = await electron.launch({ executablePath, timeout: 90000, args: ['--enable-logging=stderr', '--disable-gpu'], env: {
+    app = await electron.launch({ executablePath, timeout: 90000, args: [
+      '--enable-logging=stderr', '--disable-gpu', '--no-sandbox', '--remote-debugging-port=9222',
+    ], env: {
       ...process.env, OWNDSH_DESKTOP_HOME: home, DSH_TELEMETRY_DISABLED: '1',
       DSH_DESKTOP_DIAGNOSTIC_FILE: diagnosticFile,
     } })

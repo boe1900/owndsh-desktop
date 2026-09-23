@@ -141,7 +141,12 @@ const ownsDesktopInstance = claimDesktopSingleInstance`,
       ${JSON.stringify('if (platform === "linux") env.LD_LIBRARY_PATH = programDirectory;\n\tif (platform === "win32") env.PATH = [programDirectory, source.PATH].filter((value) => value !== void 0 && value !== "").join(";");')},
     )
     if (officePatched === asarPatched) throw new Error('desktop runtime: LibreOfficeKit Windows DLL path seam changed')
-    writeFileSync(officeAdapter, officePatched)
+    const officeWithCwd = officePatched.replace(
+      ${JSON.stringify('\t\twindowsHide: true,\n\t\tenv')},
+      ${JSON.stringify('\t\twindowsHide: true,\n\t\tcwd: engine.programDirectory,\n\t\tenv')},
+    )
+    if (officeWithCwd === officePatched) throw new Error('desktop runtime: LibreOfficeKit helper cwd seam changed')
+    writeFileSync(officeAdapter, officeWithCwd)
     writeFileSync(join(DSH_OUTPUT_ROOT, 'package.json'),`,
     ],
   ], '官方 dsh 准备流程支持无 Developer ID 的社区包')
