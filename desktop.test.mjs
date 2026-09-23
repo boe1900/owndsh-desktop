@@ -27,6 +27,8 @@ const source = join(root, '.build/official-build/apps/desktop/src')
   assert.match(prepare, /return path\.replace\(\/\\\\\.asar/u)
   assert.match(prepare, /env\.PATH = \[programDirectory, source\.PATH\]/u)
   assert.doesNotMatch(main, /credential-lock|DesktopUpdateCoordinator.*OWNDSH/u)
+  const packagedSmoke = await readFile(join(root, '.build/official-build/apps/desktop/scripts/smoke-packaged-runtime.ts'), 'utf8')
+  assert.match(packagedSmoke, /DSH_DESKTOP_SKIP_OFFICE_SMOKE/u)
 })
 
 async function compile(name, format) {
