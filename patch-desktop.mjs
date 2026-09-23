@@ -127,6 +127,20 @@ const ownsDesktopInstance = claimDesktopSingleInstance`,
     ["    if (process.platform === 'darwin') {", "    // OWNDSH-PACKAGING: 社区包保留依赖原始字节；外层 app 由 builder 作 ad-hoc 签名。\n    if (process.platform === 'darwin' && process.env.DSH_DESKTOP_UNSIGNED !== '1') {"],
   ], '官方 dsh 准备流程支持无 Developer ID 的社区包')
 
+  await patch('apps/desktop/scripts/macos-notarization-proxy.ts', [
+    [
+      "import { tryLockExclusive } from '@deepseek-ai/node-addon-system/flock'\n",
+      '',
+    ],
+    [
+      'async function withProxyLock<T>(lock: string, action: () => Promise<T>): Promise<T> {\n',
+      `async function withProxyLock<T>(lock: string, action: () => Promise<T>): Promise<T> {
+  // OWNDSH-PATCH-BUILD-ORDER: native flock 在官方 native/system 构建后才存在；按需加载避免干净 runner 在模块加载阶段失败。
+  const { tryLockExclusive } = await import('@deepseek-ai/node-addon-system/flock')
+`,
+    ],
+  ], '官方 macOS notarization proxy 的 native flock 按需加载')
+
   await patch('apps/desktop/scripts/electron-builder-config.mjs', [
     ['  const policy = resolveDesktopPolicyEnvironment(env)\n', ''],
     ["  if (unsigned && resolvedPlatform !== 'win32') throw new Error('desktop package: unsigned builds require Windows')", "  // OWNDSH-PACKAGING: 保留 updater/policy 实现；未部署自有服务时不注入更新地址。\n  const policy = unsigned ? undefined : resolveDesktopPolicyEnvironment(env)"],
