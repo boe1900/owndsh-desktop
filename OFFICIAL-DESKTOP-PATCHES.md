@@ -26,6 +26,6 @@
 
 ## 构建依赖提示
 
-`build.mjs` 会让官方 install 使用 `--no-optional`，关闭与 Desktop 无关的跨平台 optional CLI 包下载。install 前，`patchNativeEntry()` 将 `native/system/packages/entry` 的 optional workspace 依赖收窄到当前目标平台，并让 pnpm 更新临时 checkout 的 importer；随后 `linkNativeEntryPackage()` 只建立当前平台的 workspace 链接。这样既避免无关下载，也保证官方 landlock tarball 能找到当前平台的 workspace 包。该文件和修改后的官方 checkout 都属于生成物，每次 checkout 重建都会覆盖。
+`patchNativeEntry()` 会在官方 install 前将 `native/system/packages/entry` 的 optional workspace 依赖收窄到当前目标平台，并让 pnpm 更新临时 checkout 的 importer；随后 `linkNativeEntryPackage()` 只建立当前平台的 workspace 链接。其余 optional 依赖保留由 pnpm 按 runner 的 OS/CPU 选择，官方 Rolldown 等构建工具的 native binding 不能被全局禁用。该文件和修改后的官方 checkout 都属于生成物，每次 checkout 重建都会覆盖。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

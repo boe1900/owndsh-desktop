@@ -49,9 +49,6 @@ async function prepareCheckout() {
   }
   await patchDesktop(checkout, pluginVersion)
   await patchNativeEntry(checkout)
-  // 官方仓库包含大量与 Desktop 无关的可选 CLI 二进制；关闭 optional 安装避免跨平台下载。
-  // native/system 的目标包已由 patchNativeEntry 收窄到当前平台，随后只单独链接它。
-  await writeFile(join(checkout, '.npmrc'), 'optional=false\n')
   await writeFile(join(checkout, `apps/desktop/.env.${process.platform === 'darwin' ? 'macos' : 'windows'}`),
     'DSH_DESKTOP_APP_ID=com.owndsh.desktop.electron\n')
   const mask = Buffer.from('<svg width="1024" height="1024"><rect width="1024" height="1024" rx="224" fill="white"/></svg>')
@@ -75,7 +72,7 @@ async function linkNativeEntryPackage() {
 
 await prepareCheckout()
 if (process.argv.includes('--source-only')) process.exit(0)
-official(['install', '--frozen-lockfile', '--ignore-scripts', '--no-optional'], { env: { CI: 'true' } })
+official(['install', '--frozen-lockfile', '--ignore-scripts'], { env: { CI: 'true' } })
 await linkNativeEntryPackage()
 const prepareOnly = process.argv.includes('--prepare-only')
 // 编译、依赖打包、运行树、ASAR、安装器和 smoke 全部由官方 package-target 编排。
