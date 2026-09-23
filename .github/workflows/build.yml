@@ -42,7 +42,6 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm ci --prefix runtime --ignore-scripts
-          node node_modules/electron/install.js
       - uses: actions/cache@v4
         with:
           path: .build/primary-downloads
