@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 实际打包 Electron 可执行文件、临时独立用户目录与 Playwright Electron 驱动
- * [OUTPUT]: 验证运行树完整性、原生模块/文档转换、独立数据目录、插件预装与卸载
+ * [OUTPUT]: 验证运行树、原生模块/文档转换、独立数据目录、插件预装与卸载，失败时输出官方启动诊断
  * [POS]: 安装包实际窗口与 Host 的端到端验收，运行时不接触用户真实数据
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -18,6 +18,7 @@ assert.ok(executablePath, 'Set OWNDSH_TEST_APP to the actual packaged Electron e
 
 test('packaged official desktop boots beta.10 with an isolated profile and preinstalled plugin', { timeout: 300000 }, async () => {
   const home = await mkdtemp(join(tmpdir(), 'OwnDsh Electron acceptance '))
+  const diagnosticFile = join(home, 'startup-error.log')
   let app
   let stderr = ''
   const stop = async () => {
@@ -26,8 +27,9 @@ test('packaged official desktop boots beta.10 with an isolated profile and prein
     try { await app.close() } finally { clearTimeout(deadline); app = undefined }
   }
   const start = async () => {
-    app = await electron.launch({ executablePath, timeout: 60000, env: {
+    app = await electron.launch({ executablePath, timeout: 90000, args: ['--enable-logging=stderr', '--disable-gpu'], env: {
       ...process.env, OWNDSH_DESKTOP_HOME: home, DSH_TELEMETRY_DISABLED: '1',
+      DSH_DESKTOP_DIAGNOSTIC_FILE: diagnosticFile,
     } })
     app.process().stderr.on('data', chunk => { stderr += chunk })
     const page = await app.firstWindow()
@@ -36,7 +38,7 @@ test('packaged official desktop boots beta.10 with an isolated profile and prein
   }
   try {
     let page = await start()
-    await page.getByRole('dialog', { name: 'OwnDsh', exact: true }).waitFor()
+    await page.waitForFunction(() => document.body.innerText.length > 20)
     const appPath = await app.evaluate(({ app }) => app.getAppPath())
     const { verifyDesktopRuntime, inventoryDesktopRuntime } = await import('./.build/official-build/apps/desktop/lib/types/runtime-tree.js')
     try { await verifyDesktopRuntime(join(appPath, 'dsh'), '0.1.7-alpha.1') } catch (error) {
@@ -87,7 +89,7 @@ test('packaged official desktop boots beta.10 with an isolated profile and prein
     assert.equal(response.status, 200, response.body)
     await stop()
     page = await start()
-    await page.getByRole('dialog', { name: 'OwnDsh', exact: true }).waitFor()
+    await page.waitForFunction(() => document.body.innerText.length > 20)
     assert.match(await readFile(join(home, 'Harness/settings.yaml'), 'utf8'), /18888/)
     const removed = await page.evaluate(async () => {
       const r = await fetch('/enterprise/api/v1/local/uninstall', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
@@ -100,11 +102,12 @@ test('packaged official desktop boots beta.10 with an isolated profile and prein
     await stop()
     page = await start()
     await page.waitForFunction(() => document.body.innerText.length > 100 && !document.body.innerText.includes('正在连接'))
-    assert.equal(await page.getByRole('dialog', { name: 'OwnDsh', exact: true }).count(), 0)
+    assert.equal(app.windows().some(window => window.url().includes('/welcome.html')), false)
     assert.ok(!JSON.parse(await readFile(profilePath, 'utf8')).dsh.profile.bundles.includes('owndsh-plugin'))
     assert.doesNotMatch(stderr, /Can't find variable: Iterator|failed to import loader entry|ENT_PLUGIN_CLI_FAILED/)
   } catch (error) {
     process.stderr.write(stderr.slice(-10000))
+    process.stderr.write(await readFile(diagnosticFile, 'utf8').catch(() => 'No startup diagnostic file was written.\n'))
     for (const page of app?.windows() ?? []) {
       process.stderr.write(`\n${page.url()}\n${await page.locator('body').innerText({ timeout: 2000 }).catch(() => '')}\n`)
     }

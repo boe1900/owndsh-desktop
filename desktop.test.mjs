@@ -18,10 +18,13 @@ const source = join(root, '.build/official-build/apps/desktop/src')
  test('official source keeps only the OwnDsh data/profile seams and Windows tray', async () => {
   const main = await readFile(join(source, 'main.ts'), 'utf8')
   const manager = await readFile(join(source, 'project-manager.ts'), 'utf8')
+  const prepare = await readFile(join(root, '.build/official-build/apps/desktop/scripts/prepare-dsh.ts'), 'utf8')
   assert.match(main, /OWNDSH: 与官方 Desktop 共存/u)
   assert.match(main, /new Tray\(/u)
   assert.match(main, /退出 OwnDsh/u)
   assert.match(manager, /owndsh-plugin/u)
+  assert.match(prepare, /LibreOfficeKit Windows DLL path seam changed/u)
+  assert.match(prepare, /env\.PATH = \[programDirectory, source\.PATH\]/u)
   assert.doesNotMatch(main, /credential-lock|DesktopUpdateCoordinator.*OWNDSH/u)
 })
 

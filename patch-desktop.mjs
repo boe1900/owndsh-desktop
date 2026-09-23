@@ -131,11 +131,16 @@ const ownsDesktopInstance = claimDesktopSingleInstance`,
     // OWNDSH-PATCH-ASAR-NATIVE: Electron 的 app.asar 只提供虚拟读取；原生 LO helper 必须从 app.asar.unpacked 启动。
     const officeAdapter = join(DSH_OUTPUT_ROOT, 'node_modules', '@deepseek-ai', 'libreoffice-kit', 'lib', 'index.js')
     const officeSource = readFileSync(officeAdapter, 'utf8')
-    const officePatched = officeSource.replace(
-      '\\treturn path;\\n}\\nfunction glibcVersion',
-      '\\treturn process.versions.electron === undefined ? path : path.replace(/\\\\.asar([\\\\/])/u, \\'.asar.unpacked$1\\')\\n}\\nfunction glibcVersion',
+    const asarPatched = officeSource.replace(
+      ${JSON.stringify('\treturn path;\n}\nfunction glibcVersion')},
+      ${JSON.stringify("\treturn process.versions.electron === undefined ? path : path.replace(/\\.asar([\\\\/])/u, '.asar.unpacked$1');\n}\nfunction glibcVersion")},
     )
-    if (officePatched === officeSource) throw new Error('desktop runtime: LibreOfficeKit ASAR path seam changed')
+    if (asarPatched === officeSource) throw new Error('desktop runtime: LibreOfficeKit ASAR path seam changed')
+    const officePatched = asarPatched.replace(
+      ${JSON.stringify('if (platform === "linux") env.LD_LIBRARY_PATH = programDirectory;')},
+      ${JSON.stringify('if (platform === "linux") env.LD_LIBRARY_PATH = programDirectory;\n\tif (platform === "win32") env.PATH = [programDirectory, source.PATH].filter((value) => value !== void 0 && value !== "").join(";");')},
+    )
+    if (officePatched === asarPatched) throw new Error('desktop runtime: LibreOfficeKit Windows DLL path seam changed')
     writeFileSync(officeAdapter, officePatched)
     writeFileSync(join(DSH_OUTPUT_ROOT, 'package.json'),`,
     ],
