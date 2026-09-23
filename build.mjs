@@ -6,7 +6,7 @@
  */
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { cp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
@@ -42,10 +42,36 @@ async function prepareCheckout() {
   run('git', ['-C', cache, 'fetch', '--depth', '1', 'origin', 'tag', upstream.tag])
   assert.equal(run('git', ['-C', cache, 'rev-parse', `${upstream.tag}^{commit}`], { stdio: 'pipe', encoding: 'utf8' }).trim(), upstream.commit)
   run('git', ['-C', cache, 'sparse-checkout', 'disable'])
-  if (!existsSync(checkout)) run('git', ['-C', cache, 'worktree', 'add', '--detach', checkout, upstream.commit])
-  else {
-    run('git', ['-C', checkout, 'reset', '--hard', upstream.commit])
-    run('git', ['-C', checkout, 'clean', '-fd'])
+  const gitFile = join(checkout, '.git')
+  let isWorktree = false
+  if (existsSync(gitFile)) {
+    try {
+      isWorktree = run('git', ['-C', checkout, 'rev-parse', '--is-inside-work-tree'], {
+        stdio: 'pipe', encoding: 'utf8',
+      }).trim() === 'true'
+    } catch {}
+  }
+  if (!isWorktree) {
+    const downloads = join(checkout, 'apps/desktop/.desktop-build/downloads')
+    const preservedDownloads = join(root, '.build/official-downloads')
+    if (existsSync(downloads)) {
+      await rm(preservedDownloads, { recursive: true, force: true })
+      await rename(downloads, preservedDownloads)
+    }
+    await rm(checkout, { recursive: true, force: true })
+    run('git', ['-C', cache, 'worktree', 'add', '--detach', checkout, upstream.commit])
+    if (existsSync(preservedDownloads)) {
+      await mkdir(dirname(downloads), { recursive: true })
+      await rename(preservedDownloads, downloads)
+    }
+  } else {
+    try {
+      run('git', ['-C', checkout, 'reset', '--hard', upstream.commit])
+      run('git', ['-C', checkout, 'clean', '-fd'])
+    } catch {
+      await rm(checkout, { recursive: true, force: true })
+      run('git', ['-C', cache, 'worktree', 'add', '--detach', checkout, upstream.commit])
+    }
   }
   await patchDesktop(checkout, pluginVersion)
   await patchNativeEntry(checkout)
