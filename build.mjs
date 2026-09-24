@@ -43,12 +43,20 @@ await cp(join(root, 'assets/NODE-LICENSE'), join(runtime, 'NODE-LICENSE'))
 
 // PDF.js runs its worker from a Blob, outside Tauri's document initialization scripts.
 // Prepend the same compatibility layer to that worker while preserving the npm package lock.
-const previewBundle = join(runtime, 'node_modules/@deepseek-ai/dsh-client-ui-sidebar-documentpreview/lib/client.js')
-const previewSource = await readFile(previewBundle, 'utf8')
 const workerMarker = 'var _dsh_pdf_worker_default = "'
-assert.equal(previewSource.split(workerMarker).length, 2, 'document preview worker bundle changed')
 const compatSource = await readFile(join(root, 'web-compat.js'), 'utf8')
-await writeFile(previewBundle, previewSource.replace(workerMarker, `var _dsh_pdf_worker_default = ${JSON.stringify(`${compatSource}\n`)} + "`))
+const previewRoot = join(runtime, 'node_modules/@deepseek-ai/dsh-client-ui-sidebar-documentpreview/lib')
+let previewPatched = false
+for (const name of ['client.js', 'client.pdf.js']) {
+  const previewBundle = join(previewRoot, name)
+  const previewSource = await readFile(previewBundle, 'utf8')
+  if (!previewSource.includes(workerMarker)) continue
+  assert.equal(previewSource.split(workerMarker).length, 2, 'document preview worker marker is ambiguous')
+  await writeFile(previewBundle, previewSource.replace(workerMarker, `var _dsh_pdf_worker_default = ${JSON.stringify(`${compatSource}\n`)} + "`))
+  previewPatched = true
+  break
+}
+assert.ok(previewPatched, 'document preview worker bundle changed')
 
 for (const [name, entry] of [
   ['dsh', '@deepseek-ai/dsh/lib/bin.js'],
