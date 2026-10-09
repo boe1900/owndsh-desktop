@@ -39,7 +39,8 @@ async function main() {
 
   console.log(`owndsh-desktop: official build for ${target}`)
   await run('pnpm', ['install', '--frozen-lockfile'], source)
-  await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'prepare:runtime'], source)
+  // package-target.ts 内部按顺序执行 build:official → prepare:runtime → prepare:dsh → 打包，
+  // 单独预跑 prepare:runtime 会在工作区包构建之前执行，导致 vendor 包缺少 lib。
   await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${target}${unsignedFlag}`], source)
 
   const infoPath = join(ROOT, '.build', 'build-info-official.json')
