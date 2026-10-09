@@ -1,30 +1,25 @@
-# OwnDsh Desktop - 官方 Harness 与 OwnDsh 插件的独立桌面发行
+# OwnDsh Desktop - 官方 Electron 外壳的 OwnDsh 发行
 
-Pake 3.16.1 + Tauri 2 + Node 24.14.1 + Harness 0.1.7-rc.1 + npm 锁定插件 0.1.0-beta.11
+官方 Harness `dsh-v0.2.0-rc.2` + Electron 44 + Node 24 + 预置 `owndsh-plugin` 0.1.0-beta.16
 
 <directory>
-.github/ - 原生 macOS Intel/ARM、Windows x64 构建与标签草稿发布
-assets/ - 自有品牌图与内置 Node 许可证
-runtime/ - 官方 Harness、OwnDsh 插件与 pnpm 的独立 npm 精确版本锁
+.build/ - 临时官方 checkout 与裸库，构建产物，不提交
 </directory>
 
 <config>
-package.json / package-lock.json - 构建工具依赖与 build/prepare:runtime/test 入口
-build.mjs - 生成 Pake 副本、Mac 留白/Windows 满幅圆角图标、运行树与 DMG/NSIS 包，不读取兄弟仓库
-dsh-cli.rs - Windows 原生 dsh.exe 入口，无 shell 透传到内置 Node/官方 CLI，兼容官方 subprocess 的直接启动
-launcher.mjs - 启动时恢复已退出进程留下的凭据锁，离线播种用户 profile，同步桌面自管链接与 pnpm 的发行版本，启动回环 Host 并管理进程/脱敏日志
-web-compat.js - WebKit 初始化兼容层，为官方文档预览补齐 Iterator Helpers，并同步注入 PDF worker
-web-compat.test.mjs - 在缺少全局 Iterator 的隔离上下文中验证文档预览所需兼容方法
-windows-job.mjs - 使用 Harness 已安装的 koffi 创建 Windows Job，launcher 退出即回收后代
-host.rs - Tauri setup/exit 适配，从内置资源工作目录启动相对脚本以兼容 Windows verbatim 路径，校验 URL 并通过 stdin 管理生命周期
-launcher.test.mjs - 带空格路径、最小 PATH、启动/持久化/WebSocket/退出、未登录真实 API 卸载及重启不复活测试；Windows 验证 Job，OWNDSH_TEST_APP 验证实际原生入口及宿主结束回收
-README.md - 使用、数据、构建、发布和平台验证边界
-LICENSE / LICENSE-EXCEPTION - Pake GPL-3.0-or-later 与上游例外声明
+upstream.json - 官方 deepseek-harness 仓库、tag 与不可变 commit 锁
+runtime.json - 预置的 owndsh-plugin 精确版本
+patch-desktop.mjs - 官方源码差异的唯一入口；断言式补丁，标记见 OFFICIAL-DESKTOP-PATCHES.md
+patch-desktop.test.mjs - 沙箱副本上的全接缝断言验收，官方升级时的第一道门禁
+build.mjs - 拉取官方源码、施加补丁并调用官方原生构建流水线的编排入口
+OFFICIAL-DESKTOP-PATCHES.md - 补丁台账、登录掐断边界与升级步骤
+README.md - 使用、数据边界与构建验证
+LICENSE - GPL-3.0-or-later
 .gitignore / .gitattributes - 产物和秘密排除、跨平台文本换行
 </config>
 
-桌面层只拥有窗口、图标、托盘和服务生命周期。Web UI/工具属于官方 Harness，认证/企业能力属于独立插件；不复制两者业务源码，不内置 Server 地址或用户凭据。
+桌面层只拥有窗口、托盘、单实例和应用身份。Host、Web UI、工具、插件管理和登录门禁全部归官方外壳与 OwnDsh 插件；本仓库不复制两者业务源码，不内置 Server 地址或用户凭据。官方登录入口由 `OWNDSH-PATCH-LOGIN-GATE` 掐断，企业登录由插件的 `shell.overlay` 接管。
 
-运行依赖从 npm 获取并锁定 integrity，直接遵循插件对官方 Harness 的兼容 peer 声明，禁止安装第二套 Host 单例依赖。升级时更新 runtime 清单和锁，三平台真实运行测试必须通过。
+升级时改 `upstream.json` 后先跑 `npm test`；断言失败即官方改动了接缝，按台账逐条核对，不要放宽断言。不恢复 Pake bridge、Host 路径改写、凭据锁或自定义 updater。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
