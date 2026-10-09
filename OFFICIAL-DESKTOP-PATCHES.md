@@ -1,8 +1,14 @@
 # Official Desktop patch ledger
 
-本仓库从 `build/upstream.json` 固定的 DeepSeek Harness tag 生成一个临时官方 checkout。`build/patches.mjs` 是唯一的 OwnDsh 发行接缝；不要直接修改 `.build/official-harness`，发行修改必须由构建脚本重现。
+本仓库从 `upstream.json` 固定的 DeepSeek Harness tag 生成一个临时官方 checkout。`patches/` 是唯一的 OwnDsh 发行接缝；不要直接修改 `.build/official-harness`，发行修改必须由构建脚本重现。
 
-`build/patches.test.mjs` 在每次运行时对沙箱副本施加全部补丁并断言每条接缝；官方升级改动了任何锚点上下文时会立即失败，不要放宽断言。
+`patches/patches.test.mjs` 在每次运行时对沙箱副本施加全部补丁并断言每条接缝；官方升级改动了任何锚点上下文时会立即失败，不要放宽断言。
+
+## 新增补丁
+
+1. 在 `patches/` 建一个文件，用 `apply.mjs` 的 `applyPatch` 施加（锚点必须恰好一次）。
+2. 在 `patches/index.mjs` 的 `applyPatches` 登记一行。
+3. 在下面台账加一行，写清目的与升级检查。
 
 ## 设计原则
 
@@ -21,7 +27,6 @@
 ## 打包配置
 
 `build/build.mjs` 把官方 `apps/desktop/.env.windows.example` 复制为 `.env.windows`。官方打包要求该文件存在；example 中的 appId、策略 origin 沿用官方原值，origin 为空触发上面的策略跳过。不改动 productName、artifactName、appId 或图标。
-
 ## 登录掐断的边界
 
 `OWNDSH-PATCH-LOGIN-GATE` 只掐断**原生 Electron 外壳的登录入口**：启动判定、账号登出回路、会话过期回路。三处短路后官方欢迎窗口在任何生命周期下都不再弹出。企业登录由 `owndsh-plugin` 的 `shell.overlay`（`order: -100`）接管。
@@ -30,7 +35,7 @@
 
 ## 升级步骤
 
-1. 修改 `build/upstream.json` 的 `tag` 和不可变 `commit`。
+1. 修改 `upstream.json` 的 `tag` 和不可变 `commit`。
 2. 运行 `npm test`。补丁接缝不匹配时会立即失败，不要放宽断言。
 3. 阅读新生成源码中 `OWNDSH-PATCH-*` 和 `OWNDSH-PACKAGING` 标记，确认官方上下文没有改变。
 4. **官方已实现的能力立即删除对应接缝**。`OWNDSH-PATCH-WIN-TRAY` 即为此例：早期官方外壳没有 Windows 托盘，rc.2 在 `src/tray.ts` 实现了完整的 `DesktopTray`，补丁变为重复声明并破坏 tsc。每个补丁只做官方还没做的事。

@@ -7,7 +7,7 @@
   "license": "GPL-3.0-or-later",
   "engines": { "node": "^24" },
   "scripts": {
-    "test": "node --test build/patches.test.mjs",
+    "test": "node --test patches/patches.test.mjs",
     "build": "node build/build.mjs"
   }
 }

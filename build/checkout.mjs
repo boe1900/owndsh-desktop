@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
 const REPO_ROOT = resolve(import.meta.dirname, '..')
-const OFFICIAL = JSON.parse(readFileSync(join(import.meta.dirname, 'upstream.json'), 'utf8'))
+const OFFICIAL = JSON.parse(readFileSync(join(REPO_ROOT, 'upstream.json'), 'utf8'))
 const WORKTREE = join(REPO_ROOT, '.build', 'official-harness')
 const BARE = join(REPO_ROOT, '.build', 'official-harness.git')
 

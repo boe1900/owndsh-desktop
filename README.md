@@ -1,8 +1,8 @@
 # OwnDsh Desktop
 
-基于 DeepSeek Harness 官方 Electron 桌面端构建的 OwnDsh 发行。本仓库不复制官方业务源码；所有差异由 `build/patches.mjs` 在构建时对官方 checkout 施加，官方升级时以断言暴露接缝变化。
+基于 DeepSeek Harness 官方 Electron 桌面端构建的 OwnDsh 发行。本仓库不复制官方业务源码；所有差异由 `patches/` 在构建时对官方 checkout 施加，官方升级时以断言暴露接缝变化。
 
-当前锁定官方 `dsh-v0.2.0-rc.2`，预置 `owndsh-plugin@0.1.0-beta.16`（版本锁定见 `build/upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
+当前锁定官方 `dsh-v0.2.0-rc.2`，预置 `owndsh-plugin@0.1.0-beta.16`（版本锁定见 `upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
 
 ## 与官方 Desktop 的关系
 
@@ -16,12 +16,17 @@
 ## 目录结构
 
 ```
+patches/                 # 每条官方源码接缝一个文件
+├── apply.mjs            # 断言式替换底座
+├── login-gate.mjs       # 掐断官方登录入口
+├── plugin-seed.mjs      # 预置 owndsh-plugin
+├── packaging.mjs        # 打包配置接缝
+├── index.mjs            # 聚合入口（新增补丁在此登记）
+└── patches.test.mjs     # 接缝断言验收
 build/
-├── upstream.json       # 官方仓库、tag、commit 与预置插件版本的锁
-├── checkout.mjs        # 官方源码检出（git worktree，用完即弃）
-├── patches.mjs         # 全部发行补丁（唯一接缝入口）
-├── patches.test.mjs    # 接缝断言验收
-└── build.mjs           # 编排：检出 → 施加补丁 → 官方构建流水线
+├── checkout.mjs         # 官方源码检出（git worktree，用完即弃）
+└── build.mjs            # 编排：检出 → 施加补丁 → 官方构建流水线
+upstream.json            # 官方仓库、tag、commit 与预置插件版本的锁
 ```
 
 ## 构建与验证
@@ -33,9 +38,9 @@ npm test
 npm run build
 ```
 
-`npm test` 在沙箱副本上施加全部补丁并断言每条接缝。`npm run build` 拉取 `build/upstream.json` 固定的官方源码，施加补丁，调用官方原生构建流水线产出 unsigned 安装包。
+`npm test` 在沙箱副本上施加全部补丁并断言每条接缝。`npm run build` 拉取 `upstream.json` 固定的官方源码，施加补丁，调用官方原生构建流水线产出 unsigned 安装包。
 
-升级官方版本时：修改 `build/upstream.json` 的 `tag` 与 `commit`，运行 `npm test`，断言失败即说明官方改动了接缝上下文，按 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md) 的升级检查逐条核对。
+升级官方版本时：修改 `upstream.json` 的 `tag` 与 `commit`，运行 `npm test`，断言失败即说明官方改动了接缝上下文，按 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md) 的升级检查逐条核对。
 
 ## 许可
 

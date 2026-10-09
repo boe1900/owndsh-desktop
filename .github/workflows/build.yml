@@ -1,4 +1,4 @@
-# [INPUT]: build/upstream.json 固定的官方源码、build/patches.mjs 接缝与官方 Electron 构建流水线
+# [INPUT]: upstream.json 固定的官方源码、patches/ 接缝与官方 Electron 构建流水线
 # [OUTPUT]: Windows x64 unsigned 安装包与构建元数据；push/PR/手动触发均可
 # [POS]: 桌面发行的唯一 CI 入口；不签名，产物作为 Artifacts 提供
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
@@ -40,7 +40,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build
-          key: official-harness-${{ hashFiles('build/upstream.json') }}
+          key: official-harness-${{ hashFiles('upstream.json') }}
 
       - name: Verify patch seams
         run: npm test
