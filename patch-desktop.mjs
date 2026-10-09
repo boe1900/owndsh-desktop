@@ -163,45 +163,6 @@ const ownsDesktopInstance = claimDesktopSingleInstance`],
     output: '官方运行树携带 OwnDsh；首次 profile 只启用一次插件',
   })
 
-  // OWNDSH-PATCH-WIN-TRAY: Windows 关闭窗口隐藏到托盘，退出仍走官方生命周期。
-  await patch(source, {
-    marker: 'OWNDSH-PATCH-WIN-TRAY',
-    file: 'apps/desktop/src/main.ts',
-    replacements: [
-      ['  nativeTheme,\n', '  nativeTheme,\n  nativeImage,\n  Tray,\n'],
-      ['  let welcomeWindow: BrowserWindow | undefined\n', '  let welcomeWindow: BrowserWindow | undefined\n  let tray: Tray | undefined\n'],
-      [`    window.on('focus', automaticCheck)
-`,
-        `    window.on('focus', automaticCheck)
-    // OWNDSH-PATCH-WIN-TRAY: Windows 关闭窗口只隐藏到托盘，退出仍走官方生命周期。
-    window.on('close', (event) => {
-      if (process.platform === 'win32' && tray !== undefined && !tray.isDestroyed() && !quitting && !shuttingDown && !recovery.active) {
-        event.preventDefault()
-        window.hide()
-      }
-    })
-`],
-      [`  if (app.isPackaged || process.env.DSH_DESKTOP_DEV_APP === '1') app.setAsDefaultProtocolClient('dsh')`,
-        `  if (process.platform === 'win32') {
-    // OWNDSH-PATCH-WIN-TRAY: 托盘只负责显示/退出，窗口和 Host 生命周期仍由官方管理。
-    const iconPath = app.isPackaged ? join(process.resourcesPath, 'icon.png') : join(app.getAppPath(), 'resources', 'icon-windows.png')
-    tray = new Tray(nativeImage.createFromPath(iconPath))
-    tray.setToolTip('OwnDsh')
-    const showWindow = (): void => { focusPrimaryWindow() }
-    tray.on('click', showWindow)
-    tray.on('double-click', showWindow)
-    tray.setContextMenu(Menu.buildFromTemplate([
-      { label: '显示 OwnDsh', click: showWindow },
-      { type: 'separator' },
-      { label: '退出 OwnDsh', click: () => { app.quit() } },
-    ]))
-    app.once('will-quit', () => { tray?.destroy() })
-  }
-  if (app.isPackaged || process.env.DSH_DESKTOP_DEV_APP === '1') app.setAsDefaultProtocolClient('dsh')`],
-    ],
-    output: 'Windows 系统托盘',
-  })
-
   await patch(source, {
     marker: 'OWNDSH-PACKAGING',
     file: 'apps/desktop/scripts/electron-builder-config.mjs',

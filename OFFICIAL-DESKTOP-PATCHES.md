@@ -11,7 +11,6 @@
 | `OWNDSH-PATCH-LOGIN-GATE` | `apps/desktop/src/welcome-api.ts` | `needsWelcome()` 恒返回 `false`，官方原生欢迎窗口永不弹出；登录完全交给 OwnDsh 插件的 `shell.overlay` 门禁。 | 检查官方仍把欢迎判定收敛在这个单一函数。 |
 | `OWNDSH-PATCH-LOGIN-GATE` | `apps/desktop/src/main.ts` | 掐断账号登出与会话过期两处重新弹欢迎窗口的回路。 | 检查 `previousAccountStatus` 与 `pendingWelcomeNotice` 的回调结构。 |
 | `OWNDSH-PATCH-DATA-ROOT` | `apps/desktop/src/main.ts` | 把 Electron `userData` 和 Harness `DSH_HOME` 放到 OwnDsh 独立根目录，使官方 Desktop 与 OwnDsh 共存。 | 检查官方单实例初始化前仍可设置两个路径。 |
-| `OWNDSH-PATCH-WIN-TRAY` | `apps/desktop/src/main.ts` | Windows 关闭窗口隐藏到托盘，托盘菜单交给官方 `app.quit()` 退出。 | 检查主窗口与 `will-quit` 生命周期名称。 |
 | `OWNDSH-PATCH-PROFILE-SEED` | `apps/desktop/src/project-manager.ts` | 只在首次创建 profile 时写入 `owndsh-plugin` 和版本；用户卸载后不复活。 | 检查 `createPluginProfile()` 仍由官方 `applyRelease()` 调用。 |
 | `OWNDSH-PATCH-RUNTIME-DEPENDENCY` | `apps/desktop/src/project-manager.ts` | 把 OwnDsh 插件加入官方 `app/dsh` 运行树，确保 profile 播种后能加载。 | 检查 `createRuntimeProjectMetadata()` 仍是运行树唯一依赖清单。 |
 | `OWNDSH-PATCH-SHELL-RUNTIME` | `apps/desktop/package.json` | 把主进程实际导入的 `@deepseek-ai/dsh-home-paths` 从官方 `devDependencies` 提升为生产依赖，交给官方打包器纳入 `app.asar` 依赖闭包。 | 检查官方仍以 `workspace:*`/`workspace:^` 声明该运行时包；若官方主进程改为内联或改名，删除此接缝。 |
@@ -35,8 +34,9 @@
 1. 修改 `upstream.json` 的 `tag` 和不可变 `commit`。
 2. 运行 `npm test`。补丁接缝不匹配时会立即失败，不要放宽断言。
 3. 阅读新生成源码中 `OWNDSH-PATCH-*` 和 `OWNDSH-PACKAGING` 标记，确认官方上下文没有改变。
-4. 在目标机器运行 `npm run build` 和打包后冒烟。
-5. 只在官方功能已覆盖且用户明确要求时增加接缝。不要恢复 Pake bridge、Host 路径/端口改写、凭据锁或自定义 updater。
+4. **官方已实现的能力立即删除对应接缝**。`OWNDSH-PATCH-WIN-TRAY` 即为此例：早期官方外壳没有 Windows 托盘，rc.2 在 `src/tray.ts` 实现了完整的 `DesktopTray`（含 i18n、右键菜单、dispose），补丁变为重复声明并破坏 tsc。每个接缝的"删除条件"列就是这条规则的执行入口。
+5. 在目标机器运行 `npm run build` 和打包后冒烟。
+6. 只在官方功能已覆盖且用户明确要求时增加接缝。不要恢复 Pake bridge、Host 路径/端口改写、凭据锁或自定义 updater。
 
 ## 自动更新
 

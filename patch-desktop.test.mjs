@@ -55,10 +55,6 @@ try {
   assert.ok(['workspace:^', 'workspace:*'].includes(manifest.dependencies['@deepseek-ai/dsh-home-paths']), 'home-paths must be a production dependency')
   assert.ok(!(manifest.devDependencies?.['@deepseek-ai/dsh-home-paths']), 'home-paths must leave devDependencies')
 
-  // OWNDSH-PATCH-WIN-TRAY
-  assert.ok(main.includes('let tray: Tray | undefined'), 'tray state missing')
-  assert.ok(main.includes('OWNDSH-PATCH-WIN-TRAY'), 'tray patch marker missing')
-
   // OWNDSH-PACKAGING
   const builder = readFileSync(join(sandbox, 'apps/desktop/scripts/electron-builder-config.mjs'), 'utf8')
   assert.ok(builder.includes("productName: 'OwnDsh Electron'"), 'product name not rebranded')
