@@ -36,10 +36,11 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Cache official checkout
+      - name: Cache official git objects
         uses: actions/cache@v4
         with:
-          path: .build
+          # 只缓存 bare 仓库（git 对象）；worktree 每次从对象重建，避免残留构建状态。
+          path: .build/official-harness.git
           key: official-harness-${{ hashFiles('upstream.json') }}
 
       - name: Verify patch seams
