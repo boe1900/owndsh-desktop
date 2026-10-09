@@ -9,11 +9,14 @@ import { mkdtempSync, rmSync, cpSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { patchDesktop, patchNativeEntry } from './patch-desktop.mjs'
+import { checkoutOfficial } from './checkout.mjs'
 
-const SOURCE = process.env.OWNDSH_OFFICIAL_SOURCE
 const PLUGIN_VERSION = '0.1.0-beta.16'
 
-assert.ok(SOURCE !== undefined && existsSync(SOURCE), 'OWNDSH_OFFICIAL_SOURCE must point at the official checkout')
+// 未显式指定时自行检出官方源码，使 CI 与本地都能独立运行。
+const SOURCE = process.env.OWNDSH_OFFICIAL_SOURCE ?? await checkoutOfficial()
+
+assert.ok(existsSync(SOURCE), 'official checkout is missing')
 assert.ok(existsSync(join(SOURCE, 'apps/desktop/src/main.ts')), 'official checkout is missing apps/desktop')
 
 // 干净副本：补丁不得污染探针 checkout。

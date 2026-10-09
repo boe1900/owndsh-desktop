@@ -5,30 +5,15 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import assert from 'node:assert/strict'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync, readFileSync, mkdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 import { patchDesktop, patchNativeEntry } from './patch-desktop.mjs'
+import { checkoutOfficial, official } from './checkout.mjs'
 
 const ROOT = resolve(import.meta.dirname)
-const OFFICIAL = JSON.parse(readFileSync(join(ROOT, 'upstream.json'), 'utf8'))
-const PLUGIN_VERSION = process.env.OWNDSH_PLUGIN_VERSION ?? JSON.parse(
-  readFileSync(join(ROOT, 'runtime.json'), 'utf8'),
-).pluginVersion
-
-const WORKTREE = join(ROOT, '.build', 'official-harness')
-
-/** 以裸库方式检出官方源码，避免污染本仓库历史。 */
-async function checkoutOfficial() {
-  if (!existsSync(WORKTREE)) {
-    const bare = join(ROOT, '.build', 'official-harness.git')
-    await run('git', ['init', '--bare', bare], ROOT)
-    await run('git', ['fetch', '--depth', '1', OFFICIAL.repository, OFFICIAL.commit], bare)
-    await run('git', ['worktree', 'add', '--detach', WORKTREE, OFFICIAL.commit], bare)
-  }
-  return WORKTREE
-}
+const PLUGIN_VERSION = process.env.OWNDSH_PLUGIN_VERSION
+  ?? JSON.parse(readFileSync(join(ROOT, 'runtime.json'), 'utf8')).pluginVersion
 
 /** 运行子进程并在失败时抛出带阶段名的错误。 */
 function run(command, args, cwd) {
@@ -48,25 +33,24 @@ async function main() {
   const unsignedFlag = process.env.DSH_DESKTOP_UNSIGNED === '1' ? ':unsigned' : ''
   const source = await checkoutOfficial()
 
-  console.log(`owndsh-desktop: patching official ${OFFICIAL.tag} (${OFFICIAL.commit.slice(0, 10)})`)
+  console.log(`owndsh-desktop: patching official ${official.tag} (${official.commit.slice(0, 10)})`)
   await patchDesktop(source, PLUGIN_VERSION)
   await patchNativeEntry(source)
 
-  const desktopDir = join(source, 'apps/desktop')
   console.log(`owndsh-desktop: official build for ${target}`)
   await run('pnpm', ['install', '--frozen-lockfile'], source)
   await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'prepare:runtime'], source)
   await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${target}${unsignedFlag}`], source)
 
-  const buildInfo = {
-    upstream: OFFICIAL,
+  const infoPath = join(ROOT, '.build', 'build-info-official.json')
+  mkdirSync(join(ROOT, '.build'), { recursive: true })
+  writeFileSync(infoPath, `${JSON.stringify({
+    upstream: official,
     pluginVersion: PLUGIN_VERSION,
     target,
     unsigned: unsignedFlag !== '',
     builtAt: new Date().toISOString(),
-  }
-  const infoPath = join(ROOT, '.build', 'build-info-official.json')
-  writeFileSync(infoPath, `${JSON.stringify(buildInfo, undefined, 2)}\n`)
+  }, undefined, 2)}\n`)
   console.log('owndsh-desktop: build complete', infoPath)
 }
 
