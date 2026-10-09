@@ -37,10 +37,10 @@ export async function checkoutOfficial() {
     await run('git', ['fetch', '--depth', '1', OFFICIAL.repository, OFFICIAL.commit], BARE)
     await run('git', ['worktree', 'add', '--detach', WORKTREE, OFFICIAL.commit], BARE)
   } else {
-    // 上次构建可能已施加补丁；回到干净的官方状态再交给调用方打补丁。
-    // git checkout 在已处于目标 commit 时不恢复工作区修改，必须用 reset --hard 丢弃 tracked 改动。
+    // 上次构建已施加补丁；reset --hard 丢弃全部 tracked 改动，回到补丁前的官方状态。
+    // 不用 git clean：补丁只改 tracked 文件，untracked 的 node_modules 与构建产物
+    // 不影响补丁正确性，而 Windows 上删 Electron 的深嵌套 node_modules 常因长路径失败。
     await run('git', ['reset', '--hard', OFFICIAL.commit], WORKTREE)
-    await run('git', ['clean', '-fdx'], WORKTREE)
   }
   return WORKTREE
 }
