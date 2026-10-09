@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 精确 commit 的官方 Electron Desktop 源码与 OwnDsh 插件版本
- * [OUTPUT]: 掐断官方登录链路、预置 OwnDsh 插件、独立数据目录与 Windows 托盘的发行补丁
+ * [OUTPUT]: 掐断官方登录链路并预置 OwnDsh 插件的发行补丁
  * [POS]: 官方源码差异的唯一入口；标记和升级检查见 OFFICIAL-DESKTOP-PATCHES.md
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -37,55 +37,6 @@ ${content}`)
  * @param pluginVersion - 预置的 owndsh-plugin 精确版本
  */
 export async function patchDesktop(source, pluginVersion) {
-  // OWNDSH-PATCH-SHELL-RUNTIME: 主进程运行时依赖必须进入 production closure；官方源码列为 devDependency 时，app.asar 启动会漏包。
-  const desktopPackagePath = join(source, 'apps/desktop/package.json')
-  const desktopManifest = JSON.parse(await readFile(desktopPackagePath, 'utf8'))
-  const homePathsVersion = desktopManifest.dependencies?.['@deepseek-ai/dsh-home-paths']
-    ?? desktopManifest.devDependencies?.['@deepseek-ai/dsh-home-paths']
-  assert.ok(
-    homePathsVersion === 'workspace:^' || homePathsVersion === 'workspace:*',
-    `Official Desktop shell dependency seam changed: @deepseek-ai/dsh-home-paths (found ${String(homePathsVersion)})`,
-  )
-  if (desktopManifest.dependencies?.['@deepseek-ai/dsh-home-paths'] === undefined) {
-    delete desktopManifest.devDependencies['@deepseek-ai/dsh-home-paths']
-    desktopManifest.dependencies = {
-      ...desktopManifest.dependencies,
-      '@deepseek-ai/dsh-home-paths': homePathsVersion,
-    }
-    await writeFile(desktopPackagePath, `${JSON.stringify(desktopManifest, null, 2)}\n`)
-
-    // lockfile 的 apps/desktop importer 必须与 package.json 同步，否则 --frozen-lockfile 失败。
-    const lockPath = join(source, 'pnpm-lock.yaml')
-    const lockfile = await readFile(lockPath, 'utf8')
-    const importerStart = lockfile.indexOf('  apps/desktop:\n')
-    const nextImporter = lockfile.slice(importerStart + 2).search(/\n  \S/u)
-    const importerEnd = nextImporter < 0 ? -1 : importerStart + 2 + nextImporter
-    assert.ok(importerStart >= 0 && importerEnd > importerStart, 'Official Desktop lockfile importer changed')
-    const importer = lockfile.slice(importerStart, importerEnd)
-    const homePathsLockEntry =
-      "      '@deepseek-ai/dsh-home-paths':\n        specifier: workspace:*\n        version: link:../../packages/util/home-paths\n"
-    assert.equal(importer.split(homePathsLockEntry).length, 2, 'Official Desktop lockfile dependency seam changed')
-    const patchedImporter = importer
-      .replace(homePathsLockEntry, '')
-      .replace('    dependencies:\n', `    dependencies:\n${homePathsLockEntry}`)
-    await writeFile(lockPath, `${lockfile.slice(0, importerStart)}${patchedImporter}${lockfile.slice(importerEnd)}`)
-  }
-
-  await patch(source, {
-    marker: 'OWNDSH-PATCH-DATA-ROOT',
-    file: 'apps/desktop/src/main.ts',
-    replacements: [
-      ['const ownsDesktopInstance = claimDesktopSingleInstance',
-        `// OWNDSH: 与官方 Desktop 共存，Electron 数据和 Harness profile 使用独立根目录。
-// OWNDSH-PATCH-DATA-ROOT: 官方升级时只检查 app.setPath/DSH_HOME 附近的初始化顺序。
-const ownDshHome = process.env.OWNDSH_DESKTOP_HOME ?? join(app.getPath('appData'), 'com.owndsh.desktop.electron')
-app.setPath('userData', join(ownDshHome, 'electron'))
-process.env.DSH_HOME = join(ownDshHome, 'Harness')
-const ownsDesktopInstance = claimDesktopSingleInstance`],
-    ],
-    output: '独立数据目录，与官方 Desktop 共存',
-  })
-
   // OWNDSH-PATCH-LOGIN-GATE: 三处官方登录入口全部短路，登录完全交给 OwnDsh 插件的 shell.overlay 门禁。
   await patch(source, {
     marker: 'OWNDSH-PATCH-LOGIN-GATE',
@@ -165,25 +116,6 @@ const ownsDesktopInstance = claimDesktopSingleInstance`],
 
   await patch(source, {
     marker: 'OWNDSH-PACKAGING',
-    file: 'apps/desktop/scripts/electron-builder-config.mjs',
-    replacements: [
-      // 应用身份：与官方 Desktop 分别安装，互不覆盖数据。
-      ["    productName: 'DeepSeek Harness',",
-        "    // OWNDSH-PACKAGING: 独立安装身份，与官方应用分别安装。\n    productName: 'OwnDsh Electron',"],
-      ['    artifactName: `deepseek-harness-\\${version}-\\${os}-\\${arch}${unsigned ? \'-unsigned\' : \'\'}.\\${ext}`,',
-        "    artifactName: `OwnDsh-Electron-\\${version}-\\${os}-\\${arch}${unsigned ? '-unsigned' : ''}.\\${ext}`,"],
-      // 社区 unsigned 包：macOS ad-hoc 签名、跳过公证，仍保留官方全部构建与校验。
-      ['      identity: macOSSigning?.signingIdentity,', "      identity: unsigned ? '-' : macOSSigning?.signingIdentity,"],
-      ['      forceCodeSigning: true,', '      forceCodeSigning: !unsigned,'],
-      ['      hardenedRuntime: true,', '      hardenedRuntime: !unsigned,'],
-      ['      notarize: true,', '      notarize: !unsigned,'],
-      ['    dmg: {\n      sign: true,', '    dmg: {\n      sign: !unsigned,'],
-    ],
-    output: 'OwnDsh 独立安装身份与社区签名方式',
-  })
-
-  await patch(source, {
-    marker: 'OWNDSH-PACKAGING',
     file: 'apps/desktop/scripts/desktop-policy-environment.mjs',
     replacements: [
       // 社区包没有官方强制更新策略服务；origin 未配置时返回 undefined，
@@ -193,40 +125,4 @@ const ownsDesktopInstance = claimDesktopSingleInstance`],
     ],
     output: '未配置官方策略时不注入强制更新策略',
   })
-
-  await patch(source, {
-    marker: 'OWNDSH-PACKAGING',
-    file: 'apps/desktop/scripts/package-target.ts',
-    replacements: [
-      // 社区包扩展官方 unsigned 模式到 macOS；仍执行官方完整构建、运行树校验与 smoke。
-      ["  if (values.unsigned && name !== 'win-x64') throw new Error('desktop package: --unsigned requires win-x64')\n", ''],
-      ["  if (values.unsigned && values['prepare-only']) throw new Error('desktop package: --unsigned cannot use --prepare-only')\n", ''],
-      ["    if (target.platform === 'darwin') {", "    // OWNDSH-PACKAGING: 社区包不使用官方 Developer ID/keychain。\n    if (target.platform === 'darwin' && !invocation.unsigned) {"],
-    ],
-    output: '官方 package-target 的社区 unsigned 发行入口',
-  })
-}
-
-/**
- * 目标平台只携带当前架构的 native/system optional 包。
- * @param source - 临时官方 checkout 根目录
- */
-export async function patchNativeEntry(source) {
-  // OWNDSH-PACKAGING: 官方 entry manifest 面向发布仓库声明全部平台；本地构建时关闭跨平台 optional 包。
-  const nativeEntry = join(source, 'native/system/packages/entry/package.json')
-  const nativeManifest = JSON.parse(await readFile(nativeEntry, 'utf8'))
-  const platformDirectory = process.platform === 'darwin' ? `darwin-${process.arch}` : undefined
-  const platformPackage = platformDirectory === undefined ? undefined : `@deepseek-ai/node-addon-system-${platformDirectory}`
-  nativeManifest.optionalDependencies = platformPackage === undefined ? {} : { [platformPackage]: 'workspace:*' }
-  await writeFile(nativeEntry, `${JSON.stringify(nativeManifest, null, 2)}\n`)
-
-  const lockPath = join(source, 'pnpm-lock.yaml')
-  const lockfile = await readFile(lockPath, 'utf8')
-  const start = lockfile.indexOf('  native/system/packages/entry:')
-  const end = lockfile.indexOf('\n\n  ', start)
-  assert.ok(start >= 0 && end > start, 'Official lockfile native entry importer changed')
-  const importer = platformPackage === undefined
-    ? '  native/system/packages/entry: {}'
-    : `  native/system/packages/entry:\n    optionalDependencies:\n      '${platformPackage}':\n        specifier: workspace:*\n        version: link:../${platformDirectory}`
-  await writeFile(lockPath, `${lockfile.slice(0, start)}${importer}${lockfile.slice(end)}`)
 }

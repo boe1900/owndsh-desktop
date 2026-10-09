@@ -11,15 +11,16 @@ upstream.json - 官方 deepseek-harness 仓库、tag 与不可变 commit 锁
 runtime.json - 预置的 owndsh-plugin 精确版本
 patch-desktop.mjs - 官方源码差异的唯一入口；断言式补丁，标记见 OFFICIAL-DESKTOP-PATCHES.md
 patch-desktop.test.mjs - 沙箱副本上的全接缝断言验收，官方升级时的第一道门禁
+checkout.mjs - 官方源码检出；复用 worktree 时 reset --hard 清回干净状态
 build.mjs - 拉取官方源码、施加补丁并调用官方原生构建流水线的编排入口
 OFFICIAL-DESKTOP-PATCHES.md - 补丁台账、登录掐断边界与升级步骤
-README.md - 使用、数据边界与构建验证
+README.md - 构建验证
 LICENSE - GPL-3.0-or-later
 .gitignore / .gitattributes - 产物和秘密排除、跨平台文本换行
 </config>
 
-桌面层只拥有窗口、托盘、单实例和应用身份。Host、Web UI、工具、插件管理和登录门禁全部归官方外壳与 OwnDsh 插件；本仓库不复制两者业务源码，不内置 Server 地址或用户凭据。官方登录入口由 `OWNDSH-PATCH-LOGIN-GATE` 掐断，企业登录由插件的 `shell.overlay` 接管。
+只做两件事：掐断官方登录入口（`OWNDSH-PATCH-LOGIN-GATE`），预置 OwnDsh 插件（`OWNDSH-PATCH-PROFILE-SEED` + `OWNDSH-PATCH-RUNTIME-DEPENDENCY`）。产物名称、图标、appId 与官方包完全一致。历史分支的功能性改造（Windows 托盘、独立数据根目录、shell 运行时依赖提升、跨平台包收窄、名称改写）已全部删除——官方 rc.2 要么已实现，要么不必要。不要从历史分支恢复任何补丁。
 
-升级时改 `upstream.json` 后先跑 `npm test`；断言失败即官方改动了接缝，按台账逐条核对，不要放宽断言。不恢复 Pake bridge、Host 路径改写、凭据锁或自定义 updater。
+升级时改 `upstream.json` 后先跑 `npm test`；断言失败即官方改动了接缝，按台账逐条核对，不要放宽断言。官方已实现的能力立即删除对应接缝。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

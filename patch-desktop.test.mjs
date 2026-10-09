@@ -8,7 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, cpSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { patchDesktop, patchNativeEntry } from './patch-desktop.mjs'
+import { patchDesktop } from './patch-desktop.mjs'
 import { checkoutOfficial } from './checkout.mjs'
 
 const PLUGIN_VERSION = '0.1.0-beta.16'
@@ -22,52 +22,36 @@ assert.ok(existsSync(join(SOURCE, 'apps/desktop/src/main.ts')), 'official checko
 // 干净副本：补丁不得污染探针 checkout。
 const sandbox = mkdtempSync(join(tmpdir(), 'owndsh-patch-test-'))
 cpSync(join(SOURCE, 'apps'), join(sandbox, 'apps'), { recursive: true })
-cpSync(join(SOURCE, 'packages'), join(sandbox, 'packages'), { recursive: true })
-cpSync(join(SOURCE, 'native'), join(sandbox, 'native'), { recursive: true })
-cpSync(join(SOURCE, 'pnpm-lock.yaml'), join(sandbox, 'pnpm-lock.yaml'))
 
 try {
   await patchDesktop(sandbox, PLUGIN_VERSION)
-  await patchNativeEntry(sandbox)
 
   const main = readFileSync(join(sandbox, 'apps/desktop/src/main.ts'), 'utf8')
   const welcomeApi = readFileSync(join(sandbox, 'apps/desktop/src/welcome-api.ts'), 'utf8')
   const projectManager = readFileSync(join(sandbox, 'apps/desktop/src/project-manager.ts'), 'utf8')
-  const manifest = JSON.parse(readFileSync(join(sandbox, 'apps/desktop/package.json'), 'utf8'))
 
-  // OWNDSH-PATCH-DATA-ROOT
-  assert.ok(main.includes('com.owndsh.desktop.electron'), 'data root patch missing')
-  assert.ok(main.includes("process.env.DSH_HOME = join(ownDshHome, 'Harness')"), 'DSH_HOME patch missing')
-
-  // OWNDSH-PATCH-LOGIN-GATE
+  // OWNDSH-PATCH-LOGIN-GATE：欢迎窗口判定恒为 false
   assert.ok(/needsWelcome\(authentication: WelcomeAuthentication\): boolean \{\n\s*\/\/ OWNDSH/.test(welcomeApi), 'needsWelcome gate missing')
   assert.ok(welcomeApi.includes('return false'), 'needsWelcome must always return false')
+  // 登出与会话过期两处重弹回路必须删除
   assert.ok(!main.includes("previousAccountStatus === 'credential-stored' && state.status === 'signed-out'"), 'sign-out welcome loop still present')
   assert.ok(!main.includes("pendingWelcomeNotice = 'session-expired'"), 'session-expired welcome loop still present')
 
-  // OWNDSH-PATCH-PROFILE-SEED
-  assert.ok(projectManager.includes('[...WEB_PROFILE.bundles, \'owndsh-plugin\']'), 'profile seed missing')
+  // OWNDSH-PATCH-PROFILE-SEED：首次 profile 播种插件，卸载后不复活
+  assert.ok(projectManager.includes("[...WEB_PROFILE.bundles, 'owndsh-plugin']"), 'profile seed missing')
   const seedWrite = `manifest.dependencies['owndsh-plugin'] = ${JSON.stringify(PLUGIN_VERSION)}`
   assert.ok(projectManager.includes(seedWrite), 'seed version missing')
-  assert.ok(projectManager.includes('owndsh-plugin'), 'runtime dependency missing')
 
-  // OWNDSH-PATCH-SHELL-RUNTIME
-  assert.ok(['workspace:^', 'workspace:*'].includes(manifest.dependencies['@deepseek-ai/dsh-home-paths']), 'home-paths must be a production dependency')
-  assert.ok(!(manifest.devDependencies?.['@deepseek-ai/dsh-home-paths']), 'home-paths must leave devDependencies')
+  // OWNDSH-PATCH-RUNTIME-DEPENDENCY：官方运行树携带插件
+  assert.ok(projectManager.includes(`'owndsh-plugin': ${JSON.stringify(PLUGIN_VERSION)}`), 'runtime dependency missing')
 
-  // OWNDSH-PACKAGING
-  const builder = readFileSync(join(sandbox, 'apps/desktop/scripts/electron-builder-config.mjs'), 'utf8')
-  assert.ok(builder.includes("productName: 'OwnDsh Electron'"), 'product name not rebranded')
-  assert.ok(builder.includes('artifactName: `OwnDsh-Electron-'), 'artifact name not rebranded')
-  assert.ok(builder.includes('identity: unsigned ?'), 'macOS ad-hoc signing missing')
-  assert.ok(builder.includes('notarize: !unsigned,'), 'notarize bypass missing')
-
-  const packageTarget = readFileSync(join(sandbox, 'apps/desktop/scripts/package-target.ts'), 'utf8')
-  assert.ok(!packageTarget.includes('--unsigned requires win-x64'), 'unsigned platform restriction still present')
-
-  // OWNDSH-PACKAGING 策略跳过
+  // OWNDSH-PACKAGING：未配置官方策略时跳过强制更新策略注入
   const policyEnv = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-policy-environment.mjs'), 'utf8')
-  assert.ok(policyEnv.includes('if (configuredOrigin === \'\') return undefined'), 'policy bypass missing')
+  assert.ok(policyEnv.includes("if (configuredOrigin === '') return undefined"), 'policy bypass missing')
+
+  // 官方身份必须保持原样：名称、appId 均不改动
+  const builder = readFileSync(join(sandbox, 'apps/desktop/scripts/electron-builder-config.mjs'), 'utf8')
+  assert.ok(builder.includes("productName: 'DeepSeek Harness'"), 'official product name must stay')
 
   console.log('patch-desktop: all seams verified on', PLUGIN_VERSION)
 } finally {
