@@ -69,6 +69,10 @@ try {
   const packageTarget = readFileSync(join(sandbox, 'apps/desktop/scripts/package-target.ts'), 'utf8')
   assert.ok(!packageTarget.includes('--unsigned requires win-x64'), 'unsigned platform restriction still present')
 
+  // OWNDSH-PACKAGING 策略跳过
+  const policyEnv = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-policy-environment.mjs'), 'utf8')
+  assert.ok(policyEnv.includes('if (configuredOrigin === \'\') return undefined'), 'policy bypass missing')
+
   console.log('patch-desktop: all seams verified on', PLUGIN_VERSION)
 } finally {
   rmSync(sandbox, { recursive: true, force: true })

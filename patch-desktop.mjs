@@ -223,6 +223,18 @@ const ownsDesktopInstance = claimDesktopSingleInstance`],
 
   await patch(source, {
     marker: 'OWNDSH-PACKAGING',
+    file: 'apps/desktop/scripts/desktop-policy-environment.mjs',
+    replacements: [
+      // 社区包没有官方强制更新策略服务；origin 未配置时返回 undefined，
+      // builder config 的 beforePack 会跳过策略注入，app 不内置假 origin。
+      [`  const name = deployment === 'test' ? 'DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN' : 'DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN'\n  const selected = origin(environment[name], name)`,
+        `  const name = deployment === 'test' ? 'DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN' : 'DSH_DESKTOP_MANDATORY_UPDATE_PROD_ORIGIN'\n  // OWNDSH-PACKAGING: 社区包不内置官方强制更新策略；origin 未配置时跳过策略注入。\n  const configuredOrigin = environment[name]?.trim() ?? ''\n  if (configuredOrigin === '') return undefined\n  const selected = origin(configuredOrigin, name)`],
+    ],
+    output: '未配置官方策略时不注入强制更新策略',
+  })
+
+  await patch(source, {
+    marker: 'OWNDSH-PACKAGING',
     file: 'apps/desktop/scripts/package-target.ts',
     replacements: [
       // 社区包扩展官方 unsigned 模式到 macOS；仍执行官方完整构建、运行树校验与 smoke。
