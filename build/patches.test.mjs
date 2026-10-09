@@ -1,17 +1,17 @@
 /**
- * [INPUT]: patch-desktop.mjs 的补丁函数与一份临时官方 checkout
+ * [INPUT]: patches.mjs 的补丁函数与一份临时官方 checkout
  * [OUTPUT]: 全部补丁锚点命中且登录链路被掐断的通过证据
- * [POS]: patch-desktop.mjs 的唯一验收入口；失败立即阻断构建
+ * [POS]: patches.mjs 的唯一验收入口；失败立即阻断构建
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, cpSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { patchDesktop } from './patch-desktop.mjs'
-import { checkoutOfficial } from './checkout.mjs'
+import { patchDesktop } from './patches.mjs'
+import { checkoutOfficial, official } from './checkout.mjs'
 
-const PLUGIN_VERSION = '0.1.0-beta.16'
+const PLUGIN_VERSION = official.pluginVersion
 
 // 未显式指定时自行检出官方源码，使 CI 与本地都能独立运行。
 const SOURCE = process.env.OWNDSH_OFFICIAL_SOURCE ?? await checkoutOfficial()
@@ -53,7 +53,7 @@ try {
   const builder = readFileSync(join(sandbox, 'apps/desktop/scripts/electron-builder-config.mjs'), 'utf8')
   assert.ok(builder.includes("productName: 'DeepSeek Harness'"), 'official product name must stay')
 
-  console.log('patch-desktop: all seams verified on', PLUGIN_VERSION)
+  console.log('owndsh: all seams verified on', PLUGIN_VERSION)
 } finally {
   rmSync(sandbox, { recursive: true, force: true })
 }

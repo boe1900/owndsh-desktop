@@ -1,8 +1,8 @@
 # OwnDsh Desktop
 
-基于 DeepSeek Harness 官方 Electron 桌面端构建的 OwnDsh 发行。本仓库不复制官方业务源码；所有差异由 `patch-desktop.mjs` 在构建时对官方 checkout 施加，官方升级时以断言暴露接缝变化。
+基于 DeepSeek Harness 官方 Electron 桌面端构建的 OwnDsh 发行。本仓库不复制官方业务源码；所有差异由 `build/patches.mjs` 在构建时对官方 checkout 施加，官方升级时以断言暴露接缝变化。
 
-当前锁定官方 `dsh-v0.2.0-rc.2`（commit 见 `upstream.json`），预置 `owndsh-plugin@0.1.0-beta.16`（版本见 `runtime.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
+当前锁定官方 `dsh-v0.2.0-rc.2`，预置 `owndsh-plugin@0.1.0-beta.16`（版本锁定见 `build/upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
 
 ## 与官方 Desktop 的关系
 
@@ -13,6 +13,17 @@
 
 产物名称、图标、appId 与官方包一致，就是一个"去掉了登录的官方 DeepSeek Harness"。
 
+## 目录结构
+
+```
+build/
+├── upstream.json       # 官方仓库、tag、commit 与预置插件版本的锁
+├── checkout.mjs        # 官方源码检出（git worktree，用完即弃）
+├── patches.mjs         # 全部发行补丁（唯一接缝入口）
+├── patches.test.mjs    # 接缝断言验收
+└── build.mjs           # 编排：检出 → 施加补丁 → 官方构建流水线
+```
+
 ## 构建与验证
 
 在目标系统/架构使用 Node 24；首次构建需要联网下载官方源码、Electron 和官方工作区运行环境。
@@ -22,9 +33,9 @@ npm test
 npm run build
 ```
 
-`npm test` 在沙箱副本上施加全部补丁并断言每条接缝。`npm run build` 拉取 `upstream.json` 固定的官方源码，施加补丁，调用官方原生构建流水线产出 unsigned 安装包。
+`npm test` 在沙箱副本上施加全部补丁并断言每条接缝。`npm run build` 拉取 `build/upstream.json` 固定的官方源码，施加补丁，调用官方原生构建流水线产出 unsigned 安装包。
 
-升级官方版本时：修改 `upstream.json` 的 `tag` 与 `commit`，运行 `npm test`，断言失败即说明官方改动了接缝上下文，按 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md) 的升级检查逐条核对。
+升级官方版本时：修改 `build/upstream.json` 的 `tag` 与 `commit`，运行 `npm test`，断言失败即说明官方改动了接缝上下文，按 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md) 的升级检查逐条核对。
 
 ## 许可
 

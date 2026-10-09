@@ -8,10 +8,10 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
-const ROOT = resolve(import.meta.dirname)
-const OFFICIAL = JSON.parse(readFileSync(join(ROOT, 'upstream.json'), 'utf8'))
-const WORKTREE = join(ROOT, '.build', 'official-harness')
-const BARE = join(ROOT, '.build', 'official-harness.git')
+const REPO_ROOT = resolve(import.meta.dirname, '..')
+const OFFICIAL = JSON.parse(readFileSync(join(import.meta.dirname, 'upstream.json'), 'utf8'))
+const WORKTREE = join(REPO_ROOT, '.build', 'official-harness')
+const BARE = join(REPO_ROOT, '.build', 'official-harness.git')
 
 /** 运行子进程并在失败时抛出。 */
 function run(command, args, cwd) {
@@ -33,7 +33,7 @@ function run(command, args, cwd) {
 export async function checkoutOfficial() {
   if (!existsSync(WORKTREE)) {
     mkdirSync(BARE, { recursive: true })
-    await run('git', ['init', '--bare', BARE], ROOT)
+    await run('git', ['init', '--bare', BARE], REPO_ROOT)
     await run('git', ['fetch', '--depth', '1', OFFICIAL.repository, OFFICIAL.commit], BARE)
     await run('git', ['worktree', 'add', '--detach', WORKTREE, OFFICIAL.commit], BARE)
   } else {

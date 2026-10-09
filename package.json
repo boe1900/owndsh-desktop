@@ -3,12 +3,11 @@
   "version": "0.2.0-rc.2",
   "private": true,
   "type": "module",
-  "description": "OwnDsh Electron desktop shell built from the official DeepSeek Harness desktop app",
+  "description": "OwnDsh desktop build from the official DeepSeek Harness Electron app",
   "license": "GPL-3.0-or-later",
   "engines": { "node": "^24" },
   "scripts": {
-    "test": "node --test patch-desktop.test.mjs",
-    "prepare:runtime": "node build.mjs --prepare-only",
-    "build": "node build.mjs"
+    "test": "node --test build/patches.test.mjs",
+    "build": "node build/build.mjs"
   }
 }

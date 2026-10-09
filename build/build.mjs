@@ -1,19 +1,18 @@
 /**
- * [INPUT]: upstream.json 固定的官方 commit、patch-desktop.mjs 的补丁、目标平台的官方构建脚本
- * [OUTPUT]: 临时官方 checkout 施加 OwnDsh 补丁后调用官方原生构建流水线，产出 OwnDsh Electron 安装包
- * [POS]: 发行构建的唯一编排入口；不复制官方业务源码，所有差异由 patch-desktop.mjs 重现
+ * [INPUT]: upstream.json 固定的官方 commit、patches.mjs 的补丁、目标平台的官方构建脚本
+ * [OUTPUT]: 临时官方 checkout 施加 OwnDsh 补丁后调用官方原生构建流水线，产出 unsigned 安装包
+ * [POS]: 发行构建的唯一编排入口；不复制官方业务源码，所有差异由 patches.mjs 重现
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import assert from 'node:assert/strict'
-import { writeFileSync, readFileSync, mkdirSync, copyFileSync } from 'node:fs'
+import { writeFileSync, mkdirSync, copyFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
-import { patchDesktop } from './patch-desktop.mjs'
+import { patchDesktop } from './patches.mjs'
 import { checkoutOfficial, official } from './checkout.mjs'
 
-const ROOT = resolve(import.meta.dirname)
-const PLUGIN_VERSION = process.env.OWNDSH_PLUGIN_VERSION
-  ?? JSON.parse(readFileSync(join(ROOT, 'runtime.json'), 'utf8')).pluginVersion
+const REPO_ROOT = resolve(import.meta.dirname, '..')
+const PLUGIN_VERSION = process.env.OWNDSH_PLUGIN_VERSION ?? official.pluginVersion
 
 /** 运行子进程并在失败时抛出带阶段名的错误。 */
 function run(command, args, cwd) {
@@ -28,7 +27,7 @@ function run(command, args, cwd) {
 }
 
 async function main() {
-  assert.ok(PLUGIN_VERSION !== undefined, 'runtime.json or OWNDSH_PLUGIN_VERSION must set the plugin version')
+  assert.ok(PLUGIN_VERSION !== undefined, 'build/upstream.json or OWNDSH_PLUGIN_VERSION must set the plugin version')
   const target = process.env.DSH_DESKTOP_TARGET ?? 'win-x64'
   const unsignedFlag = process.env.DSH_DESKTOP_UNSIGNED === '1' ? ':unsigned' : ''
   // 官方 script 名用冒号分隔平台（package:win:x64），package-target.ts 参数用连字符（win-x64）。
@@ -52,8 +51,8 @@ async function main() {
   // 单独预跑 prepare:runtime 会在工作区包构建之前执行，导致 vendor 包缺少 lib。
   await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${scriptTarget}${unsignedFlag}`], source)
 
-  const infoPath = join(ROOT, '.build', 'build-info-official.json')
-  mkdirSync(join(ROOT, '.build'), { recursive: true })
+  const infoPath = join(REPO_ROOT, '.build', 'build-info-official.json')
+  mkdirSync(join(REPO_ROOT, '.build'), { recursive: true })
   writeFileSync(infoPath, `${JSON.stringify({
     upstream: official,
     pluginVersion: PLUGIN_VERSION,

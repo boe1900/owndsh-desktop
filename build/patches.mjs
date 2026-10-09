@@ -25,7 +25,7 @@ async function patch(source, spec) {
   await writeFile(path, `/**
  * [INPUT]: 官方 ${spec.file}
  * [OUTPUT]: ${spec.output}
- * [POS]: 临时构建副本；修改真源为 patch-desktop.mjs，标记 ${spec.marker}
+ * [POS]: 临时构建副本；修改真源为 build/patches.mjs，标记 ${spec.marker}
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 ${content}`)
