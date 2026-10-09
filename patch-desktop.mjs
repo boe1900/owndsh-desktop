@@ -40,17 +40,36 @@ export async function patchDesktop(source, pluginVersion) {
   // OWNDSH-PATCH-SHELL-RUNTIME: 主进程运行时依赖必须进入 production closure；官方源码列为 devDependency 时，app.asar 启动会漏包。
   const desktopPackagePath = join(source, 'apps/desktop/package.json')
   const desktopManifest = JSON.parse(await readFile(desktopPackagePath, 'utf8'))
-  const homePathsVersion = desktopManifest.devDependencies?.['@deepseek-ai/dsh-home-paths']
+  const homePathsVersion = desktopManifest.dependencies?.['@deepseek-ai/dsh-home-paths']
+    ?? desktopManifest.devDependencies?.['@deepseek-ai/dsh-home-paths']
   assert.ok(
     homePathsVersion === 'workspace:^' || homePathsVersion === 'workspace:*',
     `Official Desktop shell dependency seam changed: @deepseek-ai/dsh-home-paths (found ${String(homePathsVersion)})`,
   )
-  delete desktopManifest.devDependencies['@deepseek-ai/dsh-home-paths']
-  desktopManifest.dependencies = {
-    ...desktopManifest.dependencies,
-    '@deepseek-ai/dsh-home-paths': homePathsVersion,
+  if (desktopManifest.dependencies?.['@deepseek-ai/dsh-home-paths'] === undefined) {
+    delete desktopManifest.devDependencies['@deepseek-ai/dsh-home-paths']
+    desktopManifest.dependencies = {
+      ...desktopManifest.dependencies,
+      '@deepseek-ai/dsh-home-paths': homePathsVersion,
+    }
+    await writeFile(desktopPackagePath, `${JSON.stringify(desktopManifest, null, 2)}\n`)
+
+    // lockfile 的 apps/desktop importer 必须与 package.json 同步，否则 --frozen-lockfile 失败。
+    const lockPath = join(source, 'pnpm-lock.yaml')
+    const lockfile = await readFile(lockPath, 'utf8')
+    const importerStart = lockfile.indexOf('  apps/desktop:\n')
+    const nextImporter = lockfile.slice(importerStart + 2).search(/\n  \S/u)
+    const importerEnd = nextImporter < 0 ? -1 : importerStart + 2 + nextImporter
+    assert.ok(importerStart >= 0 && importerEnd > importerStart, 'Official Desktop lockfile importer changed')
+    const importer = lockfile.slice(importerStart, importerEnd)
+    const homePathsLockEntry =
+      "      '@deepseek-ai/dsh-home-paths':\n        specifier: workspace:*\n        version: link:../../packages/util/home-paths\n"
+    assert.equal(importer.split(homePathsLockEntry).length, 2, 'Official Desktop lockfile dependency seam changed')
+    const patchedImporter = importer
+      .replace(homePathsLockEntry, '')
+      .replace('    dependencies:\n', `    dependencies:\n${homePathsLockEntry}`)
+    await writeFile(lockPath, `${lockfile.slice(0, importerStart)}${patchedImporter}${lockfile.slice(importerEnd)}`)
   }
-  await writeFile(desktopPackagePath, `${JSON.stringify(desktopManifest, null, 2)}\n`)
 
   await patch(source, {
     marker: 'OWNDSH-PATCH-DATA-ROOT',

@@ -26,7 +26,8 @@ function run(command, args, cwd) {
 }
 
 /**
- * 检出 upstream.json 固定的官方源码；已存在时直接复用。
+ * 检出 upstream.json 固定的官方源码。
+ * 复用已存在的 worktree 时先丢弃本地改动并回到干净状态，保证每次返回的都是补丁前的官方源码。
  * @returns 官方 checkout 的绝对路径
  */
 export async function checkoutOfficial() {
@@ -35,6 +36,11 @@ export async function checkoutOfficial() {
     await run('git', ['init', '--bare', BARE], ROOT)
     await run('git', ['fetch', '--depth', '1', OFFICIAL.repository, OFFICIAL.commit], BARE)
     await run('git', ['worktree', 'add', '--detach', WORKTREE, OFFICIAL.commit], BARE)
+  } else {
+    // 上次构建可能已施加补丁；回到干净的官方状态再交给调用方打补丁。
+    // git checkout 在已处于目标 commit 时不恢复工作区修改，必须用 reset --hard 丢弃 tracked 改动。
+    await run('git', ['reset', '--hard', OFFICIAL.commit], WORKTREE)
+    await run('git', ['clean', '-fdx'], WORKTREE)
   }
   return WORKTREE
 }
