@@ -1,6 +1,6 @@
 # workflows/
 > L2 | 父级: ../CLAUDE.md
 
-build.yml: 三平台先验运行环境与未登录真实卸载，再构建并复测实际安装内容及原生入口，上传安装包；v 标签将相同制品合并为草稿 Release。
+build.yml: 验证补丁接缝后调用官方 Electron 构建流水线产出 unsigned 安装包，上传为 Artifacts；缓存按 `upstream.json` 哈希键复用官方 checkout。不签名、不发布 Release；正式签名发行需另行配置。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

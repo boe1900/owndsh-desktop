@@ -1,0 +1,72 @@
+# [INPUT]: upstream.json 固定的官方源码、patch-desktop.mjs 接缝与官方 Electron 构建流水线
+# [OUTPUT]: Windows x64 unsigned 安装包与构建元数据；push/PR/手动触发均可
+# [POS]: 桌面发行的唯一 CI 入口；不签名，产物作为 Artifacts 提供
+# [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+name: Build desktop
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-2022
+            target: win-x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Cache official checkout
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: official-harness-${{ hashFiles('upstream.json') }}
+
+      - name: Verify patch seams
+        run: npm test
+
+      - name: Build
+        env:
+          DSH_DESKTOP_TARGET: ${{ matrix.target }}
+          DSH_DESKTOP_UNSIGNED: '1'
+        run: npm run build
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          $root = '.build/official-harness/apps/desktop/.desktop-build/targets'
+          New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          Get-ChildItem -Path $root -Recurse -Include '*.exe','*.zip','*.json' -ErrorAction SilentlyContinue |
+            Where-Object { $_.DirectoryName -match 'unsigned-artifacts|artifacts' } |
+            ForEach-Object {
+              Copy-Item $_.FullName -Destination artifacts -Force
+              Write-Output "collected: $($_.Name)"
+            }
+          Copy-Item .build/build-info-official.json artifacts -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: owndsh-desktop-${{ matrix.target }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 14

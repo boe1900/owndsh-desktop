@@ -45,6 +45,7 @@ function run(command, args, cwd) {
 async function main() {
   assert.ok(PLUGIN_VERSION !== undefined, 'runtime.json or OWNDSH_PLUGIN_VERSION must set the plugin version')
   const target = process.env.DSH_DESKTOP_TARGET ?? 'win-x64'
+  const unsignedFlag = process.env.DSH_DESKTOP_UNSIGNED === '1' ? ':unsigned' : ''
   const source = await checkoutOfficial()
 
   console.log(`owndsh-desktop: patching official ${OFFICIAL.tag} (${OFFICIAL.commit.slice(0, 10)})`)
@@ -55,15 +56,16 @@ async function main() {
   console.log(`owndsh-desktop: official build for ${target}`)
   await run('pnpm', ['install', '--frozen-lockfile'], source)
   await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'prepare:runtime'], source)
-  await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'package:win:x64:unsigned'], source)
+  await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${target}${unsignedFlag}`], source)
 
   const buildInfo = {
     upstream: OFFICIAL,
     pluginVersion: PLUGIN_VERSION,
     target,
+    unsigned: unsignedFlag !== '',
     builtAt: new Date().toISOString(),
   }
-  const infoPath = join(desktopDir, 'build-info-official.json')
+  const infoPath = join(ROOT, '.build', 'build-info-official.json')
   writeFileSync(infoPath, `${JSON.stringify(buildInfo, undefined, 2)}\n`)
   console.log('owndsh-desktop: build complete', infoPath)
 }
