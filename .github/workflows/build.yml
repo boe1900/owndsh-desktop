@@ -1,5 +1,5 @@
 # [INPUT]: upstream.json 固定的官方源码、patches/ 接缝与官方 Electron 构建流水线
-# [OUTPUT]: Windows x64 unsigned 安装包与构建元数据；push/PR/手动触发均可
+# [OUTPUT]: Windows x64、macOS ARM64/x64 unsigned 安装包与构建元数据；push/PR/手动触发均可
 # [POS]: 桌面发行的唯一 CI 入口；不签名，产物作为 Artifacts 提供
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 name: Build desktop
@@ -25,6 +25,12 @@ jobs:
           - name: windows-x64
             os: windows-2022
             target: win-x64
+          - name: mac-arm64
+            os: macos-14
+            target: mac-arm64
+          - name: mac-x64
+            os: macos-13
+            target: mac-x64
     steps:
       - uses: actions/checkout@v4
 
@@ -49,21 +55,32 @@ jobs:
       - name: Build
         env:
           DSH_DESKTOP_TARGET: ${{ matrix.target }}
-          DSH_DESKTOP_UNSIGNED: '1'
+          DSH_DESKTOP_UNSIGNED: ${{ matrix.target == 'win-x64' && '1' || '0' }}
+          DSH_DESKTOP_MAC_UNSIGNED: ${{ startsWith(matrix.target, 'mac-') && '1' || '0' }}
         run: npm run build
 
-      - name: Collect artifacts
+      - name: Collect Windows artifacts
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $root = '.build/official-harness/apps/desktop/.desktop-build/targets'
+          $root = '.build/official-harness/apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts'
           New-Item -ItemType Directory -Path artifacts -Force | Out-Null
-          Get-ChildItem -Path $root -Recurse -Include '*.exe','*.zip','*.json' -ErrorAction SilentlyContinue |
-            Where-Object { $_.DirectoryName -match 'unsigned-artifacts|artifacts' } |
+          Get-ChildItem -Path $root -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Extension -in '.exe','.zip','.blockmap','.yml' } |
             ForEach-Object {
               Copy-Item $_.FullName -Destination artifacts -Force
               Write-Output "collected: $($_.Name)"
             }
           Copy-Item .build/build-info-official.json artifacts -ErrorAction SilentlyContinue
+
+      - name: Collect macOS artifacts
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          root=".build/official-harness/apps/desktop/.desktop-build/targets/${{ matrix.target }}/unsigned-artifacts"
+          mkdir -p artifacts
+          find "$root" -maxdepth 1 -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.blockmap' -o -name '*.yml' \) -exec cp -v {} artifacts/ \;
+          cp .build/build-info-official.json artifacts/ 2>/dev/null || true
 
       - uses: actions/upload-artifact@v4
         with:

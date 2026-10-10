@@ -16,6 +16,8 @@
 
 这样官方 Desktop 与 OwnDsh Desktop 可以并行安装；官方 CLI 仍叫 `dsh`，OwnDsh Desktop 的独立命令叫 `owndsh`，两者的数据契约分别由 `DSH_HOME` 控制。
 
+公开构建提供 Windows x64、macOS ARM64 和 macOS Intel 的 unsigned 包。它们不需要开发者证书，但 macOS 首次打开时会显示“无法验证开发者”；有 Apple Developer 凭据后可沿用官方签名与 notarization 流程。
+
 ## 目录结构
 
 ```

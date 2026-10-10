@@ -50,11 +50,24 @@ try {
   const policyEnv = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-policy-environment.mjs'), 'utf8')
   assert.ok(policyEnv.includes("if (configuredOrigin === '') return undefined"), 'policy bypass missing')
 
+  // OWNDSH-MAC-UNSIGNED：公开构建不依赖 Apple Developer 凭据，签名发行路径仍保留。
+  const packageEnvironment = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-package-environment.mjs'), 'utf8')
+  assert.ok(packageEnvironment.includes('options.unsigned || options.unsignedMac'), 'macOS unsigned validation bypass missing')
+  const prepareDsh = readFileSync(join(sandbox, 'apps/desktop/scripts/prepare-dsh.ts'), 'utf8')
+  assert.ok(prepareDsh.includes("process.env.DSH_DESKTOP_MAC_UNSIGNED !== '1'"), 'macOS unsigned runtime signing bypass missing')
+  const packageTarget = readFileSync(join(sandbox, 'apps/desktop/scripts/package-target.ts'), 'utf8')
+  assert.ok(packageTarget.includes("'unsigned-mac': { type: 'boolean', default: false }"), 'macOS unsigned option missing')
+  assert.ok(packageTarget.includes('invocation.unsignedMac'), 'macOS unsigned target path missing')
+  assert.ok(packageTarget.includes("electronBuilderEnv.CSC_IDENTITY_AUTO_DISCOVERY = 'false'"), 'macOS unsigned signing disable missing')
+  const smoke = readFileSync(join(sandbox, 'apps/desktop/scripts/smoke-packaged-runtime.ts'), 'utf8')
+  assert.ok(smoke.includes("'unsigned-mac'"), 'macOS unsigned smoke option missing')
+
   // OWNDSH-BRANDING：官方身份切换为 OwnDsh Desktop，并与官方安装并行。
   const builder = readFileSync(join(sandbox, 'apps/desktop/scripts/electron-builder-config.mjs'), 'utf8')
   assert.ok(builder.includes("productName: 'OwnDsh Desktop'"), 'OwnDsh product name missing')
   assert.ok(builder.includes('artifactName: `owndsh-desktop-'), 'OwnDsh artifact name missing')
   assert.ok(builder.includes("protocols: [{ name: 'OwnDsh Desktop', schemes: ['owndsh'] }]"), 'OwnDsh protocol missing')
+  assert.ok(builderIncludesMacUnsigned(builder), 'macOS unsigned builder seam missing')
 
   const mainSource = readFileSync(join(sandbox, 'apps/desktop/src/main.ts'), 'utf8')
   assert.ok(mainSource.includes("process.env.DSH_HOME ??= join(homedir(), '.owndsh')"), 'OwnDsh home default missing')
@@ -109,4 +122,11 @@ try {
   console.log('owndsh: all seams verified on', PLUGIN_VERSION)
 } finally {
   rmSync(sandbox, { recursive: true, force: true })
+}
+
+function builderIncludesMacUnsigned(builder) {
+  return builder.includes("const unsignedMacOS = env.DSH_DESKTOP_MAC_UNSIGNED === '1'")
+    && builder.includes('const unsigned = unsignedWindows || unsignedMacOS')
+    && builder.includes('forceCodeSigning: !unsigned')
+    && builder.includes('if (unsigned || !artifact.file.endsWith(\'.dmg\')) return')
 }

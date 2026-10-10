@@ -10,6 +10,7 @@ import { packaging } from './packaging.mjs'
 import { branding } from './branding.mjs'
 import { cliIsolation } from './cli-isolation.mjs'
 import { dataIsolation } from './data-isolation.mjs'
+import { macosUnsigned } from './macos-unsigned.mjs'
 
 /**
  * 施加全部 OwnDsh 发行补丁。
@@ -17,6 +18,7 @@ import { dataIsolation } from './data-isolation.mjs'
  * @param pluginVersion - 预置的 owndsh-plugin 精确版本
  */
 export async function applyPatches(source, pluginVersion) {
+  await macosUnsigned(source)
   await branding(source)
   await cliIsolation(source)
   await dataIsolation(source)

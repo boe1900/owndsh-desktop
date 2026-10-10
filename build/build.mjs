@@ -31,6 +31,8 @@ async function main() {
   assert.ok(PLUGIN_VERSION !== undefined, 'upstream.json or OWNDSH_PLUGIN_VERSION must set the plugin version')
   const target = process.env.DSH_DESKTOP_TARGET ?? 'win-x64'
   const unsignedFlag = process.env.DSH_DESKTOP_UNSIGNED === '1' ? ':unsigned' : ''
+  const macUnsigned = process.env.DSH_DESKTOP_MAC_UNSIGNED === '1'
+  assert.equal(macUnsigned && !target.startsWith('mac-'), false, 'DSH_DESKTOP_MAC_UNSIGNED requires a macOS target')
   // 官方 script 名用冒号分隔平台（package:win:x64），package-target.ts 参数用连字符（win-x64）。
   const scriptTarget = target.replaceAll('-', ':')
   const source = await checkoutOfficial()
@@ -50,7 +52,10 @@ async function main() {
   await run('pnpm', ['install', '--frozen-lockfile'], source)
   // package-target.ts 内部按顺序执行 build:official → prepare:runtime → prepare:dsh → 打包，
   // 单独预跑 prepare:runtime 会在工作区包构建之前执行，导致 vendor 包缺少 lib。
-  await run('pnpm', ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${scriptTarget}${unsignedFlag}`], source)
+  const packageArgs = macUnsigned
+    ? ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'package', '--', target, '--unsigned-mac']
+    : ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${scriptTarget}${unsignedFlag}`]
+  await run('pnpm', packageArgs, source)
 
   const infoPath = join(REPO_ROOT, '.build', 'build-info-official.json')
   mkdirSync(join(REPO_ROOT, '.build'), { recursive: true })
