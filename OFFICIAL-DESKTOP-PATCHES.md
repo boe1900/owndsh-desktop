@@ -12,7 +12,7 @@
 
 ## 设计原则
 
-**发行边界是登录、插件、品牌和数据隔离。** 不复制官方源码；名称、图标、appId、外部协议和数据根目录由补丁重现，官方升级时用断言暴露接缝变化。
+**发行边界是登录、插件、品牌、数据隔离和公开发行服务。** 不复制官方源码；名称、图标、appId、外部协议、数据根目录、更新源和账号菜单由补丁重现，官方升级时用断言暴露接缝变化。
 
 ## 当前接缝
 
@@ -30,10 +30,16 @@
 | `OWNDSH-PORT-ISOLATION` | `apps/desktop-host/src/index.ts` | 将 WebServer 启动参数从固定 `19387` 改为 `0`，由操作系统分配空闲回环端口；官方 Host 与 OwnDsh 可同时运行，Host 仍通过 `ctx.webServer.port` 生成真实访问 URL。 | 检查官方 Host 仍把 WebServer 端口作为启动参数传给 profile，且 `dsh-host-webserver` 仍支持 `port: 0` 并暴露实际监听端口。 |
 | `OWNDSH-MAC-UNSIGNED` | `apps/desktop/scripts/desktop-package-environment.mjs`、`apps/desktop/scripts/electron-builder-config.mjs`、`apps/desktop/scripts/package-target.ts`、`apps/desktop/scripts/smoke-packaged-runtime.ts` | 无 Apple Developer 凭据时生成 macOS ARM64/x64 unsigned `.dmg`/`.zip`，使用独立 unsigned-artifacts 目录并跳过签名/notarization；官方签名路径保持不变。 | 检查官方 `--unsigned-mac` 入口、macOS builder 的签名与 notarization hook、冒烟路径仍存在；若上游改动签名前置校验，重新确认 unsigned 只绕过凭据而不绕过运行时验收。 |
 | `OWNDSH-PACKAGING` | `apps/desktop/scripts/desktop-policy-environment.mjs` | 官方打包强制要求强制更新策略 origin；社区包没有官方策略服务，配假 origin 会把页面来源校验指向不存在的域。origin 未配置时返回 undefined，官方 builder 的 beforePack 本就有 `if (policy === undefined) return` 分支，自然跳过策略注入。 | 检查官方 builder 仍保留 policy 为 undefined 时的跳过分支。 |
+| `OWNDSH-GITHUB-UPDATES` | `apps/desktop/scripts/electron-builder-config.mjs` | unsigned 包把 electron-updater 的 generic 源指向 `https://github.com/boe1900/owndsh-desktop/releases/latest/download`，Windows 读取 `nightly.yml`，macOS 读取 `nightly-mac.yml`；签名构建保留官方更新配置。 | 检查官方 `publish` 配置和 macOS `app-update.yml` 写入仍由同一 builder 接缝控制；Release 必须保留 feed、安装包和对应 blockmap 的原始文件名。 |
+| `OWNDSH-ACCOUNT-MENU` | `packages/client/ui-settings-account/src/client/AccountMenu.tsx` | 从右下角更多菜单移除官方登录和意见反馈，保留设置与已登录后的退出登录；企业登录由 `owndsh-plugin` 门禁负责。 | 检查官方账号菜单的注入 props、菜单项 id 和登录对话框挂载点；若官方把入口移到新的 launcher，重新确认 OwnDsh 没有暴露官方账号体系。 |
 
 ## 打包配置
 
-`build/build.mjs` 把已由 `OWNDSH-BRANDING` 改写的官方 `apps/desktop/.env.windows.example` 复制为 `.env.windows`。appId 默认是 `com.owndsh.desktop`，策略 origin 为空触发 `OWNDSH-PACKAGING` 的跳过；构建资源来自 `assets/`。
+`build/build.mjs` 把已由 `OWNDSH-BRANDING` 改写的官方 `apps/desktop/.env.windows.example` 复制为 `.env.windows`。appId 默认是 `com.owndsh.desktop`，策略 origin 为空触发 `OWNDSH-PACKAGING` 的跳过；unsigned 构建还会在包内写入 OwnDsh GitHub Release 更新源；构建资源来自 `assets/`。
+
+## GitHub Release 更新文件
+
+`latest/download` 只按文件名转发 GitHub 最新 Release 的资产。`.github/workflows/build.yml` 在推送 `v*` 标签时自动下载三组构建 Artifacts，把去掉 `v` 的标签作为构建版本，并创建或更新对应 Release；普通 push/PR 不发布 Release。标签必须是官方产品版本允许的构建版本，例如当前产品 `0.2.0-rc.2` 的更新可使用 `v0.2.0-rc.2.20261011.1`；官方产品版本升级后再使用对应的新版本。发布每个平台的新版本时，必须保留官方生成的文件名：Windows 为 `nightly.yml`、`*.exe`、`*.exe.blockmap`；macOS 为 `nightly-mac.yml`、每个架构的 `*.zip`、`*.zip.blockmap`，`.dmg` 只用于首次安装。Release 必须是已发布的最新版本，不能是 Draft；版本号也必须递增，否则 electron-updater 会认为没有新版本。
 
 ## 登录掐断的边界
 

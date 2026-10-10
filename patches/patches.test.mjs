@@ -5,7 +5,7 @@
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, cpSync, readFileSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, cpSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { applyPatches } from './index.mjs'
@@ -23,6 +23,9 @@ assert.ok(existsSync(join(SOURCE, 'apps/desktop/src/main.ts')), 'official checko
 // 干净副本：补丁不得污染探针 checkout。
 const sandbox = mkdtempSync(join(tmpdir(), 'owndsh-patch-test-'))
 cpSync(join(SOURCE, 'apps'), join(sandbox, 'apps'), { recursive: true })
+mkdirSync(join(sandbox, 'packages', 'client'), { recursive: true })
+cpSync(join(SOURCE, 'packages', 'client', 'ui-settings-account'),
+  join(sandbox, 'packages', 'client', 'ui-settings-account'), { recursive: true })
 
 try {
   await applyPatches(sandbox, PLUGIN_VERSION)
@@ -70,6 +73,18 @@ try {
   assert.ok(builder.includes('artifactName: `owndsh-desktop-'), 'OwnDsh artifact name missing')
   assert.ok(builder.includes("protocols: [{ name: 'OwnDsh Desktop', schemes: ['owndsh'] }]"), 'OwnDsh protocol missing')
   assert.ok(builderIncludesMacUnsigned(builder), 'macOS unsigned builder seam missing')
+
+  // OWNDSH-GITHUB-UPDATES：unsigned 包携带 OwnDsh GitHub Release 更新源。
+  assert.ok(builder.includes("https://github.com/boe1900/owndsh-desktop/releases/latest/download"), 'OwnDsh GitHub update source missing')
+  assert.ok(builder.includes("publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: 'nightly' }]"), 'GitHub update feed metadata missing')
+
+  // OWNDSH-ACCOUNT-MENU：更多菜单不再暴露官方登录和反馈入口。
+  const accountMenu = readFileSync(join(sandbox, 'packages/client/ui-settings-account/src/client/AccountMenu.tsx'), 'utf8')
+  assert.ok(accountMenu.includes("id: 'settings'"), 'settings menu item was removed')
+  assert.ok(accountMenu.includes("id: 'signout'"), 'signed-in sign-out menu item was removed')
+  assert.ok(!accountMenu.includes("id: 'contact'"), 'official feedback menu item still present')
+  assert.ok(!accountMenu.includes("id: 'signin'"), 'official sign-in menu item still present')
+  assert.ok(!accountMenu.includes('SignInDialog'), 'official sign-in dialog still mounted from account menu')
 
   const mainSource = readFileSync(join(sandbox, 'apps/desktop/src/main.ts'), 'utf8')
   assert.ok(mainSource.includes("process.env.DSH_HOME ??= join(homedir(), '.owndsh')"), 'OwnDsh home default missing')

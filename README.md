@@ -22,15 +22,30 @@
 
 Windows 首次运行可能显示 SmartScreen 未验证发布者，选择“更多信息 → 仍要运行”即可。
 
+## 自动更新
+
+unsigned 包已经接入 OwnDsh 的 GitHub Release。Windows 从 `nightly.yml` 更新，macOS 从 `nightly-mac.yml` 更新；更新源地址是 [Latest Release assets](https://github.com/boe1900/owndsh-desktop/releases/latest/download)。向 `main` 推送代码只产生 Actions Artifacts；推送 `v*` 标签时，GitHub Actions 会去掉标签开头的 `v` 作为构建版本，并自动把 feed 文件、安装包和对应 blockmap 发布到 Release。当前产品版本是 `0.2.0-rc.2`，例如更新构建可以使用标签 `v0.2.0-rc.2.20261011.1`。只上传 `.exe` 或 `.dmg` 不能触发自动更新，Release 也必须是已发布的最新版本。
+
+发布时只需推送标签：
+
+```sh
+git tag v0.2.0-rc.2.20261011.1
+git push origin v0.2.0-rc.2.20261011.1
+```
+
+Actions 完成三个平台构建后，会自动创建或更新同名 Release。标签版本必须高于已安装版本；当前旧版 `0.2.0-rc.2` 需要先手动安装一次带更新配置的新包，之后才能自动升级。
+
 ## 与官方 Desktop 的关系
 
-保留官方 Electron 外壳的全部原生能力，只在明确的发行接缝上做五件事：
+保留官方 Electron 外壳的全部原生能力，只在明确的发行接缝上做七件事：
 
 1. **掐断官方登录入口**：原生欢迎窗口在任何生命周期下都不再弹出，登录由 `owndsh-plugin` 的 `shell.overlay` 企业门禁接管。
 2. **预置 OwnDsh 插件**：首次创建 profile 时播种 `owndsh-plugin`，用户卸载后不复活。
 3. **使用 OwnDsh Desktop 品牌**：产品名、appId、`owndsh://` 外部唤醒协议和平台图标独立于官方 Desktop。
 4. **隔离本地数据**：默认使用 `~/.owndsh`、独立 Electron `userData` 和 `sessionData`；显式 `DSH_HOME` 仍然优先。
 5. **隔离终端命令**：官方继续使用 `dsh`，OwnDsh 使用 `owndsh`；两者的命令注册状态也独立。
+6. **接入 OwnDsh 更新源**：unsigned 包从 OwnDsh GitHub Release 读取更新元数据，签名构建仍沿用官方更新配置。
+7. **清理官方账号入口**：右下角更多菜单不再显示官方登录和意见反馈，只保留设置与已登录后的退出登录。
 
 这样官方 Desktop 与 OwnDsh Desktop 可以并行安装；官方 CLI 仍叫 `dsh`，OwnDsh Desktop 的独立命令叫 `owndsh`，两者的数据契约分别由 `DSH_HOME` 控制。
 
@@ -44,6 +59,8 @@ patches/                 # 每条官方源码接缝一个文件
 ├── branding.mjs         # OwnDsh Desktop 名称、协议、appId 默认值和图标
 ├── cli-isolation.mjs    # 独立 owndsh 命令及命令管理状态
 ├── data-isolation.mjs   # 独立 DSH_HOME 与 Electron 数据目录
+├── github-updates.mjs   # unsigned 包接入 OwnDsh GitHub Release 更新源
+├── account-menu.mjs     # 移除右下角官方登录与意见反馈
 ├── login-gate.mjs       # 掐断官方登录入口
 ├── plugin-seed.mjs      # 预置 owndsh-plugin
 ├── packaging.mjs        # 打包配置接缝

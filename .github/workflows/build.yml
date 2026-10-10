@@ -1,12 +1,13 @@
 # [INPUT]: upstream.json 固定的官方源码、patches/ 接缝与官方 Electron 构建流水线
-# [OUTPUT]: Windows x64、macOS ARM64/x64 unsigned 安装包与构建元数据；push/PR/手动触发均可
-# [POS]: 桌面发行的唯一 CI 入口；不签名，产物作为 Artifacts 提供
+# [OUTPUT]: Windows x64、macOS ARM64/x64 unsigned 安装包、feed 元数据和 blockmap；push/PR/手动触发均可，v* 标签自动发布 Release
+# [POS]: 桌面发行的唯一 CI 入口；普通构建产出 Artifacts，v* 标签构建自动发布 Release；不签名
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 name: Build desktop
 
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -52,6 +53,11 @@ jobs:
       - name: Verify patch seams
         run: npm test
 
+      - name: Set tagged build version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: echo "DSH_DESKTOP_BUILD_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
       - name: Build
         env:
           DSH_DESKTOP_TARGET: ${{ matrix.target }}
@@ -88,3 +94,45 @@ jobs:
           path: artifacts/
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: owndsh-desktop-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verify release assets
+        shell: bash
+        run: |
+          mapfile -t assets < <(find release-assets -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' -o -name '*.blockmap' -o -name '*.yml' \) -print)
+          test "${#assets[@]}" -gt 0
+          test -n "$(find release-assets -name 'nightly.yml' -print -quit)"
+          test -n "$(find release-assets -name 'nightly-mac.yml' -print -quit)"
+          test -n "$(find release-assets -name '*.exe' -print -quit)"
+          test -n "$(find release-assets -name '*.dmg' -print -quit)"
+          test -n "$(find release-assets -name '*.blockmap' -print -quit)"
+          printf '%s\n' "${assets[@]}"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          mapfile -t assets < <(find release-assets -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' -o -name '*.blockmap' -o -name '*.yml' \) -print)
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${assets[@]}" \
+              --title "OwnDsh Desktop $RELEASE_TAG" \
+              --generate-notes
+          fi

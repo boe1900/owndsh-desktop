@@ -10,6 +10,8 @@ data-isolation.mjs: 在 main process 启动早期设置独立 DSH_HOME、userDat
 port-isolation.mjs: 让 Host 的 WebServer 使用操作系统分配的空闲端口，避免与官方 Desktop 并行运行时冲突
 macos-unsigned.mjs: 无 Apple 凭据时生成 macOS ARM64/x64 unsigned 产物，保留官方签名发行路径
 packaging.mjs: 打包配置接缝，策略 origin 未配置时跳过强制更新策略注入
+github-updates.mjs: unsigned 包改用 OwnDsh GitHub Release 的 nightly 更新源，签名发行路径保留官方配置
+account-menu.mjs: 从右下角更多菜单移除官方登录与意见反馈，保留设置和已登录后的退出登录
 index.mjs: 聚合入口，applyPatches 依次施加全部补丁；新增补丁在此登记
 patches.test.mjs: 沙箱副本上的全接缝断言验收，npm test 的执行对象
 

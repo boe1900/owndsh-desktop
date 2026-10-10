@@ -52,9 +52,13 @@ async function main() {
   await run('pnpm', ['install', '--frozen-lockfile'], source)
   // package-target.ts 内部按顺序执行 build:official → prepare:runtime → prepare:dsh → 打包，
   // 单独预跑 prepare:runtime 会在工作区包构建之前执行，导致 vendor 包缺少 lib。
+  const requestedBuildVersion = process.env.DSH_DESKTOP_BUILD_VERSION?.trim()
+  const buildVersionArgs = requestedBuildVersion === undefined || requestedBuildVersion === ''
+    ? [] : ['--build-version', requestedBuildVersion]
   const packageArgs = macUnsigned
-    ? ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'package', '--', target, '--unsigned-mac']
-    : ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${scriptTarget}${unsignedFlag}`]
+    ? ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'package', '--', target, '--unsigned-mac', ...buildVersionArgs]
+    : ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${scriptTarget}${unsignedFlag}`,
+      ...(buildVersionArgs.length === 0 ? [] : ['--', ...buildVersionArgs])]
   await run('pnpm', packageArgs, source)
 
   const infoPath = join(REPO_ROOT, '.build', 'build-info-official.json')
