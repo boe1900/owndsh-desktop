@@ -35,6 +35,8 @@ export async function checkoutOfficial() {
     mkdirSync(BARE, { recursive: true })
     await run('git', ['init', '--bare', BARE], REPO_ROOT)
   }
+  // Official postinstall enables worktree-local Git config; a bare common config rejects that migration.
+  await run('git', ['config', '--file', join(BARE, 'config'), 'core.bare', 'false'], REPO_ROOT)
   // 已有该 commit 时是 no-op，缺失时浅克隆；保证 worktree 能 checkout 到目标对象。
   await run('git', ['fetch', '--depth', '1', OFFICIAL.repository, OFFICIAL.commit], BARE)
   // 每次新建 worktree：上次构建的 node_modules 与构建产物不进入新 checkout。

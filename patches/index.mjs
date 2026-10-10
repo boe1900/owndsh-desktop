@@ -7,6 +7,9 @@
 import { loginGate } from './login-gate.mjs'
 import { pluginSeed } from './plugin-seed.mjs'
 import { packaging } from './packaging.mjs'
+import { branding } from './branding.mjs'
+import { cliIsolation } from './cli-isolation.mjs'
+import { dataIsolation } from './data-isolation.mjs'
 
 /**
  * 施加全部 OwnDsh 发行补丁。
@@ -14,6 +17,9 @@ import { packaging } from './packaging.mjs'
  * @param pluginVersion - 预置的 owndsh-plugin 精确版本
  */
 export async function applyPatches(source, pluginVersion) {
+  await branding(source)
+  await cliIsolation(source)
+  await dataIsolation(source)
   await loginGate(source)
   await pluginSeed(source, pluginVersion)
   await packaging(source)

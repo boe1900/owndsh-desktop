@@ -38,7 +38,7 @@ async function main() {
   console.log(`owndsh-desktop: patching official ${UPSTREAM.tag} (${UPSTREAM.commit.slice(0, 10)})`)
   await applyPatches(source, PLUGIN_VERSION)
 
-  // 官方打包要求 apps/desktop/.env.windows 存在；直接用官方 example（appId、名称、图标全部保持官方原样）。
+  // 官方打包要求 apps/desktop/.env.windows 存在；branding 补丁已将 example 改成 OwnDsh 身份。
   // 策略 origin 在 example 中为空，触发 OWNDSH-PACKAGING 补丁跳过强制更新策略注入。
   const envName = process.platform === 'win32' ? '.env.windows' : '.env.macos'
   const envExample = join(source, 'apps/desktop', `${envName}.example`)
