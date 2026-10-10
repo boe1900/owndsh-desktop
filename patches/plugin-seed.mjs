@@ -38,4 +38,29 @@ export async function pluginSeed(source, pluginVersion) {
     ],
     output: '官方运行树携带 OwnDsh；首次 profile 只启用一次插件',
   })
+
+  await applyPatch(source, {
+    marker: 'OWNDSH-PATCH-RUNTIME-RESOLUTION',
+    file: 'apps/desktop/scripts/prepare-dsh.ts',
+    replacements: [
+      [`    cpSync(modules, join(DSH_OUTPUT_ROOT, 'node_modules'), {
+        recursive: true, dereference: true,
+        filter: source => desktopRuntimeFileExclusion(relative(modules, source), target, officeEngine) === undefined,
+      })
+    })
+    writeFileSync(join(DSH_OUTPUT_ROOT, 'package.json'),`,
+        `    cpSync(modules, join(DSH_OUTPUT_ROOT, 'node_modules'), {
+        recursive: true, dereference: true,
+        filter: source => desktopRuntimeFileExclusion(relative(modules, source), target, officeEngine) === undefined,
+      })
+    })
+    // OWNDSH-PATCH-RUNTIME-RESOLUTION: profile resolver walks dsh's dependency tree.
+    const dshManifestPath = join(DSH_OUTPUT_ROOT, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')
+    const dshManifest = JSON.parse(readFileSync(dshManifestPath, 'utf8')) as { dependencies?: Record<string, string> }
+    dshManifest.dependencies = { ...dshManifest.dependencies, 'owndsh-plugin': ${JSON.stringify(pluginVersion)} }
+    writeFileSync(dshManifestPath, \`\${JSON.stringify(dshManifest, undefined, 2)}\\n\`)
+    writeFileSync(join(DSH_OUTPUT_ROOT, 'package.json'),`],
+    ],
+    output: '将 OwnDsh 插件登记到 dsh 依赖树，供 profile resolver 发现',
+  })
 }

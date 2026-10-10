@@ -55,6 +55,8 @@ try {
   assert.ok(packageEnvironment.includes('options.unsigned || options.unsignedMac'), 'macOS unsigned validation bypass missing')
   const prepareDsh = readFileSync(join(sandbox, 'apps/desktop/scripts/prepare-dsh.ts'), 'utf8')
   assert.ok(prepareDsh.includes("process.env.DSH_DESKTOP_MAC_UNSIGNED !== '1'"), 'macOS unsigned runtime signing bypass missing')
+  assert.ok(prepareDsh.includes('OWNDSH-PATCH-RUNTIME-RESOLUTION'), 'runtime resolver dependency seam missing')
+  assert.ok(prepareDsh.includes(`'owndsh-plugin': ${JSON.stringify(PLUGIN_VERSION)}`), 'runtime dsh dependency missing')
   const packageTarget = readFileSync(join(sandbox, 'apps/desktop/scripts/package-target.ts'), 'utf8')
   assert.ok(packageTarget.includes("'unsigned-mac': { type: 'boolean', default: false }"), 'macOS unsigned option missing')
   assert.ok(packageTarget.includes('invocation.unsignedMac'), 'macOS unsigned target path missing')
