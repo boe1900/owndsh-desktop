@@ -26,10 +26,10 @@ jobs:
             os: windows-2022
             target: win-x64
           - name: mac-arm64
-            os: macos-14
+            os: macos-15
             target: mac-arm64
           - name: mac-x64
-            os: macos-13
+            os: macos-15-intel
             target: mac-x64
     steps:
       - uses: actions/checkout@v4
