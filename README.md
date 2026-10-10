@@ -4,6 +4,24 @@
 
 当前锁定官方 `dsh-v0.2.0-rc.2`，预置 `owndsh-plugin@0.1.0-beta.16`（版本锁定见 `upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
 
+## 下载与首次启动
+
+从 [Latest Release](https://github.com/boe1900/owndsh-desktop/releases/latest) 下载对应平台的安装包：Apple Silicon（M 系列）选择 `mac-arm64`，Intel Mac 选择 `mac-x64`，Windows 选择 `win-x64`。
+
+公开 macOS 包未签名，首次启动可能被 Gatekeeper 拦截：
+
+1. 打开 `.dmg`，将 `OwnDsh Desktop.app` 拖入“应用程序”。
+2. 在“应用程序”中右键点击 `OwnDsh Desktop.app`，选择“打开”；如果系统仍拦截，打开“系统设置 → 隐私与安全性”，点击“仍要打开”。
+3. 如果提示应用“已损坏”，退出提示后在终端执行：
+
+   ```sh
+   xattr -dr com.apple.quarantine "/Applications/OwnDsh Desktop.app"
+   ```
+
+   然后重新从“应用程序”打开。应用若安装在其他目录，请相应修改命令中的路径。
+
+Windows 首次运行可能显示 SmartScreen 未验证发布者，选择“更多信息 → 仍要运行”即可。
+
 ## 与官方 Desktop 的关系
 
 保留官方 Electron 外壳的全部原生能力，只在明确的发行接缝上做五件事：
