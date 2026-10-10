@@ -86,6 +86,13 @@ try {
   assert.ok(locale.includes("aboutProduct: 'OwnDsh Desktop'"), 'OwnDsh English locale missing')
   assert.ok(locale.includes("aboutMenu: '关于 OwnDsh Desktop'"), 'OwnDsh Chinese locale missing')
 
+  for (const file of ['apps/desktop/src/main.ts', 'apps/desktop/src/locale.ts']) {
+    const source = readFileSync(join(sandbox, file), 'utf8')
+    assert.equal((source.match(/\[INPUT\]: 官方/g) ?? []).length, 1, `${file} must have one L3 header`)
+  }
+  assert.match(main, /标记 OWNDSH-BRANDING \+ OWNDSH-DATA-ISOLATION \+ OWNDSH-PATCH-LOGIN-GATE/)
+  assert.match(locale, /标记 OWNDSH-BRANDING \+ OWNDSH-CLI-ISOLATION/)
+
   for (const [sourceName, targetName] of [
     ['icon-1104.png', 'icon.png'],
     ['icon-windows.png', 'icon-windows.png'],
@@ -122,6 +129,10 @@ try {
   ]) {
     assert.ok(readFileSync(join(sandbox, file), 'utf8').includes(expected), `${file} OwnDsh identity missing`)
   }
+
+  assert.equal(readFileSync(join(sandbox, 'apps/desktop/cli/owndsh'), 'utf8').split('\n', 1)[0], '#!/bin/sh', 'macOS CLI shebang must remain first')
+  assert.equal((readFileSync(join(sandbox, 'apps/desktop/cli/owndsh'), 'utf8').match(/\[INPUT\]: 官方/g) ?? []).length, 1, 'macOS CLI must have one L3 header')
+  assert.equal((readFileSync(join(sandbox, 'apps/desktop/cli/owndsh.cmd'), 'utf8').match(/\[INPUT\]: 官方/g) ?? []).length, 1, 'Windows CLI must have one L3 header')
 
   assert.equal(existsSync(join(sandbox, 'apps/desktop/cli/dsh')), false, 'official macOS CLI name still present')
   assert.equal(existsSync(join(sandbox, 'apps/desktop/cli/dsh.cmd')), false, 'official Windows CLI name still present')

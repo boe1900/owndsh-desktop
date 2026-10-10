@@ -11,7 +11,7 @@ build/ - 官方源码检出与打包编排；不复制官方业务源码
 
 <config>
 upstream.json - 官方 deepseek-harness 仓库、tag、不可变 commit 与预置插件版本的唯一锁
-patches/apply.mjs - 断言式替换底座；锚点默认必须命中一次，重复文本显式声明次数，官方升级改动了立即失败
+patches/apply.mjs - 断言式替换底座；锚点默认必须命中一次，重复文本显式声明次数，统一单文件单 L3 头部并保留 shebang，官方升级改动了立即失败
 patches/login-gate.mjs - 掐断官方登录入口（OWNDSH-PATCH-LOGIN-GATE）
 patches/plugin-seed.mjs - 预置 owndsh-plugin（PROFILE-SEED + RUNTIME-DEPENDENCY）
 patches/branding.mjs - OwnDsh Desktop 名称、appId 默认值、协议与平台图标

@@ -20,6 +20,20 @@ export async function cliIsolation(source) {
 
   await applyPatch(source, {
     marker: 'OWNDSH-CLI-ISOLATION',
+    file: 'apps/desktop/cli/owndsh.cmd',
+    replacements: [['DeepSeek Harness.exe', 'OwnDsh Desktop.exe']],
+    output: 'Windows CLI 启动 OwnDsh Desktop，并使用独立命令名',
+  })
+
+  await applyPatch(source, {
+    marker: 'OWNDSH-CLI-ISOLATION',
+    file: 'apps/desktop/cli/owndsh',
+    replacements: [['DeepSeek Harness"', 'OwnDsh Desktop"']],
+    output: 'macOS CLI 启动 OwnDsh Desktop，并使用独立命令名',
+  })
+
+  await applyPatch(source, {
+    marker: 'OWNDSH-CLI-ISOLATION',
     file: 'apps/desktop/cli/owndsh',
     replacements: [[
       'set -e\n',

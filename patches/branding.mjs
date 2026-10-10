@@ -134,8 +134,6 @@ export async function branding(source) {
       ['"Choose an empty folder or the registered DeepSeek Harness installation folder.', '"Choose an empty folder or the registered OwnDsh Desktop installation folder.'],
       ['"请选择空文件夹，或 DeepSeek Harness 原来的安装目录。', '"请选择空文件夹，或 OwnDsh Desktop 原来的安装目录。'],
     ], '安装器显示 OwnDsh Desktop 文本'],
-    ['apps/desktop/cli/dsh.cmd', [['DeepSeek Harness.exe', 'OwnDsh Desktop.exe']], 'Windows CLI 启动 OwnDsh Desktop'],
-    ['apps/desktop/cli/dsh', [['DeepSeek Harness"', 'OwnDsh Desktop"']], 'macOS CLI 启动 OwnDsh Desktop'],
   ]) {
     await applyPatch(source, { marker: 'OWNDSH-BRANDING', file, replacements, output })
   }
