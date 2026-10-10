@@ -75,6 +75,11 @@ try {
   assert.ok(mainSource.includes("setAsDefaultProtocolClient('owndsh')"), 'OwnDsh external protocol missing')
   assert.ok(mainSource.includes("url === 'owndsh://open'"), 'OwnDsh protocol wake-up missing')
 
+  // OWNDSH-PORT-ISOLATION：官方与 OwnDsh 并行启动时不抢固定 WebServer 端口。
+  const desktopHost = readFileSync(join(sandbox, 'apps/desktop-host/src/index.ts'), 'utf8')
+  assert.ok(desktopHost.includes("args: ['--no-open', '--port', '0']"), 'OwnDsh Host must use an OS-assigned port')
+  assert.ok(!desktopHost.includes("args: ['--no-open', '--port', '19387']"), 'fixed WebServer port still present')
+
   const locale = readFileSync(join(sandbox, 'apps/desktop/src/locale.ts'), 'utf8')
   assert.ok(locale.includes("aboutProduct: 'OwnDsh Desktop'"), 'OwnDsh English locale missing')
   assert.ok(locale.includes("aboutMenu: '关于 OwnDsh Desktop'"), 'OwnDsh Chinese locale missing')

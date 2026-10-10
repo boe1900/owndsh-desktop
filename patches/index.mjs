@@ -11,6 +11,7 @@ import { branding } from './branding.mjs'
 import { cliIsolation } from './cli-isolation.mjs'
 import { dataIsolation } from './data-isolation.mjs'
 import { macosUnsigned } from './macos-unsigned.mjs'
+import { portIsolation } from './port-isolation.mjs'
 
 /**
  * 施加全部 OwnDsh 发行补丁。
@@ -22,6 +23,7 @@ export async function applyPatches(source, pluginVersion) {
   await branding(source)
   await cliIsolation(source)
   await dataIsolation(source)
+  await portIsolation(source)
   await loginGate(source)
   await pluginSeed(source, pluginVersion)
   await packaging(source)
