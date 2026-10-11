@@ -41,7 +41,7 @@ macOS unsigned 更新的签名身份必须保持稳定。按 cdhash 签名的历
 
 ## GitHub Release 更新文件
 
-`latest/download` 只按文件名转发 GitHub 最新 Release 的资产。`.github/workflows/build.yml` 在推送 `v*` 标签时自动下载三组构建 Artifacts，把去掉 `v` 的标签作为构建版本，并创建或更新对应 Release；普通 push/PR 不发布 Release。标签必须是官方产品版本允许的构建版本，例如当前产品 `0.2.0-rc.2` 的更新可使用 `v0.2.0-rc.2.20261011.2`；官方产品版本升级后再使用对应的新版本。发布每个平台的新版本时，必须保留官方生成的文件名：Windows 为 `nightly.yml`、`*.exe`、`*.exe.blockmap`；macOS 为 `nightly-mac.yml`、每个架构的 `*.zip`、`*.zip.blockmap`，`.dmg` 只用于首次安装。Release 必须是已发布的最新版本，不能是 Draft；版本号也必须递增，否则 electron-updater 会认为没有新版本。
+`latest/download` 只按文件名转发 GitHub 最新 Release 的资产。`.github/workflows/build.yml` 只有在推送 `v*` 标签时才构建三组安装包并自动下载 Artifacts，把去掉 `v` 的标签作为构建版本，创建或更新对应 Release；PR/手动触发用于验证，不发布 Release。标签必须是官方产品版本允许的构建版本，例如当前产品 `0.2.0-rc.2` 的更新可使用 `v0.2.0-rc.2.20261011.2`；官方产品版本升级后再使用对应的新版本。发布每个平台的新版本时，必须保留官方生成的文件名：Windows 为 `nightly.yml`、`*.exe`、`*.exe.blockmap`；macOS 为 `nightly-mac.yml`、每个架构的 `*.zip`、`*.zip.blockmap`，`.dmg` 只用于首次安装。Release 必须是已发布的最新版本，不能是 Draft；版本号也必须递增，否则 electron-updater 会认为没有新版本。
 
 ## 登录掐断的边界
 

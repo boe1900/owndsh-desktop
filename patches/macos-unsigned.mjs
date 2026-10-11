@@ -86,7 +86,8 @@ async function signMacOSAppAdHoc(appPath: string): Promise<void> {
   await executeFile('/usr/bin/codesign', ['--deep', '--force', '--sign', '-', appPath], { timeout: 120_000 })
   await executeFile('/usr/bin/codesign', [
     '--force', '--sign', '-',
-    '--requirements', '=designated => identifier "Electron"',
+    '--identifier', 'com.owndsh.desktop',
+    '--requirements', '=designated => identifier "com.owndsh.desktop"',
     appPath,
   ], { timeout: 120_000 })
   await executeFile('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath], { timeout: 120_000 })
