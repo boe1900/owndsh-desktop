@@ -5,7 +5,7 @@
 <directory>
 patches/ - 全部发行补丁：每条官方源码接缝一个文件，由 index.mjs 聚合
 assets/ - OwnDsh 图标源稿与 Windows/macOS/About/托盘派生资源
-build/ - 官方源码检出与打包编排；不复制官方业务源码
+build/ - 官方源码检出、打包编排与 Release 资产收口；不复制官方业务源码
 .build/ - 临时官方 checkout 与裸库，构建产物，不提交
 </directory>
 
@@ -26,6 +26,7 @@ patches/index.mjs - 聚合入口；新增补丁在此登记一行
 patches/patches.test.mjs - 沙箱副本上的全接缝断言验收，官方升级时的第一道门禁
 build/checkout.mjs - 官方源码检出；复用 worktree 时 reset --hard 清回干净状态
 build/build.mjs - 检出 → 施加补丁 → 官方原生构建流水线的编排入口；标签构建可传递 DSH_DESKTOP_BUILD_VERSION
+build/prepare-release.mjs - 校验三平台产物后汇总 Release 资产，用实际 ZIP 校验值生成同时覆盖 ARM64/x64 的 nightly-mac.yml
 OFFICIAL-DESKTOP-PATCHES.md - 补丁台账、登录掐断边界与升级步骤
 LICENSE - GPL-3.0-or-later
 .gitignore / .gitattributes - 产物和秘密排除、跨平台文本换行

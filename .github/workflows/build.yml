@@ -1,6 +1,6 @@
-# [INPUT]: upstream.json 固定的官方源码、patches/ 接缝与官方 Electron 构建流水线
+# [INPUT]: upstream.json 固定的官方源码、patches/ 接缝、官方 Electron 流水线与 build/prepare-release.mjs
 # [OUTPUT]: Windows x64、macOS ARM64/x64 unsigned 安装包、feed 元数据和 blockmap；PR/手动触发可验证，v* 标签自动发布 Release
-# [POS]: 桌面发行的唯一 CI 入口；安装包只在 v* 标签构建，PR/手动触发用于验证；不签名
+# [POS]: 桌面发行的唯一 CI 入口；v* 标签自动发布，PR/手动构建只上传 Artifacts；macOS 使用 ad-hoc 签名
 # [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 name: Build desktop
 
@@ -111,24 +111,23 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: owndsh-desktop-*
-          path: release-assets
-          merge-multiple: true
+          path: release-artifacts
+          merge-multiple: false
 
-      - name: Verify release assets
-        shell: bash
-        run: |
-          mapfile -t assets < <(find release-assets -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.exe' -o -name '*.blockmap' -o -name '*.yml' \) -print)
-          test "${#assets[@]}" -gt 0
-          test -n "$(find release-assets -name 'nightly.yml' -print -quit)"
-          test -n "$(find release-assets -name 'nightly-mac.yml' -print -quit)"
-          test -n "$(find release-assets -name '*.exe' -print -quit)"
-          test -n "$(find release-assets -name '*.dmg' -print -quit)"
-          test -n "$(find release-assets -name '*.blockmap' -print -quit)"
-          printf '%s\n' "${assets[@]}"
+      - name: Prepare release assets and macOS feed
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node build/prepare-release.mjs release-artifacts release-assets "$RELEASE_TAG"
 
       - name: Create or update GitHub Release
         env:
