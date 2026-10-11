@@ -2,7 +2,7 @@
 
 基于 DeepSeek Harness 官方 Electron 桌面端构建的 OwnDsh 发行。本仓库不复制官方业务源码；所有差异由 `patches/` 在构建时对官方 checkout 施加，官方升级时以断言暴露接缝变化。
 
-当前锁定官方 `dsh-v0.2.0-rc.2`，预置 `owndsh-plugin@0.1.0-beta.16`（版本锁定见 `upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
+当前锁定官方 `dsh-v0.2.0-rc.2`，预置 `owndsh-plugin@0.1.0-beta.17`（版本锁定见 `upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
 
 ## 下载与首次启动
 
@@ -42,7 +42,7 @@ macOS 的早期 unsigned 构建使用了按 cdhash 绑定的临时 ad-hoc 签名
 保留官方 Electron 外壳的全部原生能力，只在明确的发行接缝上做七件事：
 
 1. **掐断官方登录入口**：原生欢迎窗口在任何生命周期下都不再弹出，登录由 `owndsh-plugin` 的 `shell.overlay` 企业门禁接管。
-2. **预置 OwnDsh 插件**：首次创建 profile 时播种 `owndsh-plugin`，用户卸载后不复活。
+2. **预置 OwnDsh 插件**：首次创建 profile 时播种 `owndsh-plugin`，升级时迁移 OwnDsh 管理的旧精确版本；用户卸载或禁用后不复活。
 3. **使用 OwnDsh Desktop 品牌**：产品名、appId、`owndsh://` 外部唤醒协议和平台图标独立于官方 Desktop。
 4. **隔离本地数据**：默认使用 `~/.owndsh`、独立 Electron `userData` 和 `sessionData`；显式 `DSH_HOME` 仍然优先。
 5. **隔离终端命令**：官方继续使用 `dsh`，OwnDsh 使用 `owndsh`；两者的命令注册状态也独立。

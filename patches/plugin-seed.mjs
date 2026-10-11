@@ -1,10 +1,10 @@
 /**
  * [INPUT]: 官方 project-manager.ts 的 profile 创建与运行树依赖
- * [OUTPUT]: 首次 profile 播种 owndsh-plugin 且官方运行树携带该插件
- * [POS]: patches/ 的插件预置；用户卸载后不复活，版本由 upstream.json 锁定
+ * [OUTPUT]: 首次 profile 播种 owndsh-plugin，升级 OwnDsh 管理的旧副本，且官方运行树携带该插件
+ * [POS]: patches/ 的插件预置；尊重用户卸载/禁用状态，版本由 upstream.json 锁定
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { applyPatch } from './apply.mjs'
 
@@ -18,25 +18,40 @@ export async function pluginSeed(source, pluginVersion) {
     marker: 'OWNDSH-PATCH-PROFILE-SEED',
     file: 'apps/desktop/src/project-manager.ts',
     replacements: [
+      ['  existsSync,\n', '  existsSync,\n  rmSync,\n'],
       [`export function createPluginProfile(projectDir: string): void {
   initProfile(projectDir, WEB_PROFILE.bundles)
 }`,
         `export function createPluginProfile(projectDir: string): void {
-  // OWNDSH-PATCH-PROFILE-SEED: 只在官方首次创建 profile 时播种；用户卸载后不复活。
+  // OWNDSH-PATCH-PROFILE-SEED: 首次播种；只迁移 OwnDsh 精确版本，用户卸载/禁用不复活。
   const fresh = !existsSync(join(projectDir, 'package.json'))
   initProfile(projectDir, fresh ? [...WEB_PROFILE.bundles, 'owndsh-plugin'] : WEB_PROFILE.bundles)
-  if (!fresh) return
   const manifestPath = join(projectDir, 'package.json')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
-  manifest.dependencies['owndsh-plugin'] = ${JSON.stringify(pluginVersion)}
-  writeJson(manifestPath, manifest)
+  if (fresh) {
+    manifest.dependencies['owndsh-plugin'] = ${JSON.stringify(pluginVersion)}
+    writeJson(manifestPath, manifest)
+    return
+  }
+  const dependency = manifest.dependencies?.['owndsh-plugin']
+  if (typeof dependency !== 'string') return
+  const installedPath = join(projectDir, 'node_modules', 'owndsh-plugin')
+  let installedVersion
+  try {
+    installedVersion = JSON.parse(readFileSync(join(installedPath, 'package.json'), 'utf8')).version
+  } catch {}
+  if (dependency === installedVersion && installedVersion !== ${JSON.stringify(pluginVersion)}) {
+    manifest.dependencies['owndsh-plugin'] = ${JSON.stringify(pluginVersion)}
+    writeJson(manifestPath, manifest)
+    rmSync(installedPath, { recursive: true, force: true })
+  }
 }`],
       ['    dependencies: desktopCorePackageOverrides(packageSet),\n',
         `    // OWNDSH-PATCH-RUNTIME-DEPENDENCY: 官方运行树额外携带 OwnDsh 插件，profile 才能开箱即用。
     dependencies: { ...desktopCorePackageOverrides(packageSet), 'owndsh-plugin': ${JSON.stringify(pluginVersion)} },
 `],
     ],
-    output: '官方运行树携带 OwnDsh；首次 profile 只启用一次插件',
+    output: '官方运行树携带 OwnDsh；profile 更新只迁移 OwnDsh 管理的旧精确版本',
   })
 
   await applyPatch(source, {

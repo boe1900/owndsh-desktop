@@ -41,10 +41,12 @@ try {
   assert.ok(!main.includes("previousAccountStatus === 'credential-stored' && state.status === 'signed-out'"), 'sign-out welcome loop still present')
   assert.ok(!main.includes("pendingWelcomeNotice = 'session-expired'"), 'session-expired welcome loop still present')
 
-  // OWNDSH-PATCH-PROFILE-SEED：首次 profile 播种插件，卸载后不复活
+  // OWNDSH-PATCH-PROFILE-SEED：首次播种并迁移 OwnDsh 管理的旧精确版本，卸载/禁用不复活
   assert.ok(projectManager.includes("[...WEB_PROFILE.bundles, 'owndsh-plugin']"), 'profile seed missing')
   const seedWrite = `manifest.dependencies['owndsh-plugin'] = ${JSON.stringify(PLUGIN_VERSION)}`
-  assert.ok(projectManager.includes(seedWrite), 'seed version missing')
+  assert.ok(projectManager.split(seedWrite).length - 1 >= 2, 'seed/migration version missing')
+  assert.ok(projectManager.includes('  rmSync,\n'), 'stale profile migration import missing')
+  assert.ok(projectManager.includes("rmSync(installedPath, { recursive: true, force: true })"), 'stale profile plugin migration missing')
 
   // OWNDSH-PATCH-RUNTIME-DEPENDENCY：官方运行树携带插件
   assert.ok(projectManager.includes(`'owndsh-plugin': ${JSON.stringify(PLUGIN_VERSION)}`), 'runtime dependency missing')

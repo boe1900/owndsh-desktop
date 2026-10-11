@@ -1,6 +1,6 @@
 # OwnDsh Desktop - 官方 Electron 外壳的 OwnDsh 发行
 
-官方 Harness `dsh-v0.2.0-rc.2` + Electron 44 + Node 24 + 预置 `owndsh-plugin` 0.1.0-beta.16
+官方 Harness `dsh-v0.2.0-rc.2` + Electron 44 + Node 24 + 预置 `owndsh-plugin` 0.1.0-beta.17
 
 <directory>
 patches/ - 全部发行补丁：每条官方源码接缝一个文件，由 index.mjs 聚合
