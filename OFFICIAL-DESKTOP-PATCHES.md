@@ -23,7 +23,7 @@
 | `OWNDSH-PATCH-PROFILE-SEED` | `apps/desktop/src/project-manager.ts` | 只在首次创建 profile 时写入 `owndsh-plugin` 和版本；用户卸载后不复活。 | 检查 `createPluginProfile()` 仍由官方 `applyRelease()` 调用。 |
 | `OWNDSH-PATCH-RUNTIME-DEPENDENCY` | `apps/desktop/src/project-manager.ts` | 把 OwnDsh 插件加入官方运行树的安装依赖，确保打包时进入 runtime。 | 检查 `createRuntimeProjectMetadata()` 仍是运行树安装依赖入口。 |
 | `OWNDSH-PATCH-RUNTIME-RESOLUTION` | `apps/desktop/scripts/prepare-dsh.ts` | 将打包后的 `owndsh-plugin` 登记为 `@deepseek-ai/dsh` 的依赖，使 profile resolver 能从安装树发现它。 | 检查 runtime materialize 后仍从 `@deepseek-ai/dsh/package.json` 建立安装解析树。 |
-| `OWNDSH-BRANDING` | `apps/desktop/scripts/electron-builder-config.mjs`、`apps/desktop/src/main.ts`、`apps/desktop/src/locale.ts`、`apps/desktop/scripts/development-app.ts`、`apps/desktop/scripts/*`、`apps/desktop/installer/*` | 使用 OwnDsh Desktop 产品名、`com.owndsh.desktop` 默认 appId、`owndsh://` 协议、制品前缀、安装器文本和可见桌面文本。 | 检查官方 builder、About、locale、开发应用和发行脚本仍保留这些身份接缝；协议或制品命名变更时同步登录/唤醒和更新发现入口。 |
+| `OWNDSH-BRANDING` | `apps/desktop/scripts/electron-builder-config.mjs`、`apps/desktop/src/main.ts`、`apps/desktop/src/locale.ts`、`apps/desktop/scripts/development-app.ts`、`apps/desktop/scripts/*`、`apps/desktop/installer/*` | 使用 OwnDsh Desktop 产品名、`com.owndsh.desktop` 默认 appId、`owndsh://` 协议、制品前缀、安装器文本、可见桌面文本和 macOS 本地网络用途声明。 | 检查官方 builder、About、locale、开发应用、发行脚本和 `mac.extendInfo` 仍保留这些身份/权限接缝；协议或制品命名变更时同步登录/唤醒和更新发现入口。 |
 | `OWNDSH-BRANDING` | `apps/desktop/resources/*` | 复制 OwnDsh 1104/About、Windows、macOS 和多尺寸托盘图标；平台 PNG 保持官方 1024×1024 规格与圆角内缩。 | 检查官方资源文件名和 builder 引用未变化；修改 `assets/icon.png` 后重生成全部派生资源。 |
 | `OWNDSH-CLI-ISOLATION` | `apps/desktop/cli/*`、`apps/desktop/scripts/prepare-cli.ts`、`apps/desktop/src/command-*`、`apps/desktop/scripts/command-path.ps1`、`apps/desktop/src/locale.ts` | 将 OwnDsh 的全局命令注册为 `owndsh`，同时负责 CLI 启动器品牌、macOS 收据、Windows 注册表键、互斥键和 PATH 探测隔离；底层 CLI 仍复用官方实现。 | 检查官方命令入口、CLI 启动器、macOS 固定目标、Windows `owndsh.cmd` 检测和命令管理 UI 的接缝；若官方命令管理重构，重新确认两端安装不会争抢状态。 |
 | `OWNDSH-DATA-ISOLATION` | `apps/desktop/src/main.ts` | 在日志、Host 和 profile 初始化前默认设置 `DSH_HOME=~/.owndsh`，并隔离 Electron `userData`/`sessionData`；显式环境变量仍优先。 | 检查 `app.setAppLogsPath()` 仍位于数据路径设置之后，且官方所有 Host/credentials/cache 路径继续从 `DSH_HOME` 派生。 |
@@ -39,7 +39,7 @@
 
 ## GitHub Release 更新文件
 
-`latest/download` 只按文件名转发 GitHub 最新 Release 的资产。`.github/workflows/build.yml` 在推送 `v*` 标签时自动下载三组构建 Artifacts，把去掉 `v` 的标签作为构建版本，并创建或更新对应 Release；普通 push/PR 不发布 Release。标签必须是官方产品版本允许的构建版本，例如当前产品 `0.2.0-rc.2` 的更新可使用 `v0.2.0-rc.2.20261011.1`；官方产品版本升级后再使用对应的新版本。发布每个平台的新版本时，必须保留官方生成的文件名：Windows 为 `nightly.yml`、`*.exe`、`*.exe.blockmap`；macOS 为 `nightly-mac.yml`、每个架构的 `*.zip`、`*.zip.blockmap`，`.dmg` 只用于首次安装。Release 必须是已发布的最新版本，不能是 Draft；版本号也必须递增，否则 electron-updater 会认为没有新版本。
+`latest/download` 只按文件名转发 GitHub 最新 Release 的资产。`.github/workflows/build.yml` 在推送 `v*` 标签时自动下载三组构建 Artifacts，把去掉 `v` 的标签作为构建版本，并创建或更新对应 Release；普通 push/PR 不发布 Release。标签必须是官方产品版本允许的构建版本，例如当前产品 `0.2.0-rc.2` 的更新可使用 `v0.2.0-rc.2.20261011.2`；官方产品版本升级后再使用对应的新版本。发布每个平台的新版本时，必须保留官方生成的文件名：Windows 为 `nightly.yml`、`*.exe`、`*.exe.blockmap`；macOS 为 `nightly-mac.yml`、每个架构的 `*.zip`、`*.zip.blockmap`，`.dmg` 只用于首次安装。Release 必须是已发布的最新版本，不能是 Draft；版本号也必须递增，否则 electron-updater 会认为没有新版本。
 
 ## 登录掐断的边界
 

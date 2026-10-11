@@ -72,6 +72,7 @@ try {
   assert.ok(builder.includes("productName: 'OwnDsh Desktop'"), 'OwnDsh product name missing')
   assert.ok(builder.includes('artifactName: `owndsh-desktop-'), 'OwnDsh artifact name missing')
   assert.ok(builder.includes("protocols: [{ name: 'OwnDsh Desktop', schemes: ['owndsh'] }]"), 'OwnDsh protocol missing')
+  assert.ok(builder.includes('NSLocalNetworkUsageDescription:'), 'macOS local network usage description missing')
   assert.ok(builderIncludesMacUnsigned(builder), 'macOS unsigned builder seam missing')
 
   // OWNDSH-GITHUB-UPDATES：unsigned 包携带 OwnDsh GitHub Release 更新源。

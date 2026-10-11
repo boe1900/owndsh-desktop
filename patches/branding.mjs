@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 官方 Electron 打包配置、桌面壳身份文本与 OwnDsh 图标派生资源
- * [OUTPUT]: 使用 OwnDsh Desktop 名称、协议、appId 默认值和图标的官方 checkout
+ * [OUTPUT]: 使用 OwnDsh Desktop 名称、协议、appId 默认值、图标和 macOS 本地网络用途声明的官方 checkout
  * [POS]: patches/ 的品牌接缝；不修改官方业务逻辑，资源由仓库内 OwnDsh 图标复制
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -41,9 +41,13 @@ export async function branding(source) {
       ['    artifactName: `deepseek-harness-\\${version}-\\${os}-\\${arch}${unsigned ? \'-unsigned\' : \'\'}.\\${ext}`,',
         '    artifactName: `owndsh-desktop-\\${version}-\\${os}-\\${arch}${unsigned ? \'-unsigned\' : \'\'}.\\${ext}`,'],
       [`      extendInfo: { NSMicrophoneUsageDescription: 'DeepSeek Harness uses your microphone to transcribe speech into message drafts.' },`,
-        `      extendInfo: { NSMicrophoneUsageDescription: 'OwnDsh Desktop uses your microphone to transcribe speech into message drafts.' },`],
+        `      extendInfo: {
+        CFBundleLocalizations: ['en', 'zh_CN'],
+        NSMicrophoneUsageDescription: 'OwnDsh Desktop uses your microphone to transcribe speech into message drafts.',
+        NSLocalNetworkUsageDescription: 'OwnDsh Desktop needs access to your local network to connect to the enterprise server.',
+      },`],
     ],
-    output: '官方 builder 使用 OwnDsh Desktop 产品名、协议和制品前缀',
+    output: '官方 builder 使用 OwnDsh Desktop 产品名、协议、制品前缀和 macOS 本地网络用途声明',
   })
 
   await applyPatch(source, {
@@ -52,6 +56,12 @@ export async function branding(source) {
     replacements: [
       [`readonly protocols: readonly [{ readonly name: 'DeepSeek Harness'; readonly schemes: readonly ['dsh'] }]`,
         `readonly protocols: readonly [{ readonly name: 'OwnDsh Desktop'; readonly schemes: readonly ['owndsh'] }]`],
+      [`readonly extendInfo: { readonly NSMicrophoneUsageDescription: string }`,
+        `readonly extendInfo: {
+      readonly CFBundleLocalizations: readonly ['en', 'zh_CN']
+      readonly NSMicrophoneUsageDescription: string
+      readonly NSLocalNetworkUsageDescription: string
+    }`],
     ],
     output: '官方 builder 类型声明与 OwnDsh 产品身份一致',
   })
