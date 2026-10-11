@@ -66,6 +66,11 @@ try {
   assert.ok(packageTarget.includes("electronBuilderEnv.CSC_IDENTITY_AUTO_DISCOVERY = 'false'"), 'macOS unsigned signing disable missing')
   assert.ok(packageTarget.includes("await executeFile('/usr/bin/codesign', ['--deep', '--force', '--sign', '-', appPath]"), 'macOS unsigned ad-hoc signing missing')
   assert.ok(packageTarget.includes("await executeFile('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath]"), 'macOS unsigned signature verification missing')
+  assert.ok(packageTarget.includes("const appPath = join(buildPaths.unsignedArtifacts"), 'macOS unsigned final app path missing')
+  assert.ok(packageTarget.includes("for (const format of ['dmg', 'zip'] as const)"), 'macOS unsigned artifacts must use both formats')
+  assert.ok(packageTarget.includes("format === 'dmg' ? 'unsigned-dmg-artifacts' : 'unsigned-zip-artifacts'"), 'macOS unsigned formats need isolated builder outputs')
+  assert.ok(packageTarget.includes('appPath,\n        output,\n'), 'macOS unsigned artifacts must use the signed prepackaged app')
+  assert.ok(packageTarget.includes('renameSync(join(output, entry), destination)'), 'macOS unsigned artifacts must be promoted after isolated builds')
   const smoke = readFileSync(join(sandbox, 'apps/desktop/scripts/smoke-packaged-runtime.ts'), 'utf8')
   assert.ok(smoke.includes("'unsigned-mac'"), 'macOS unsigned smoke option missing')
 

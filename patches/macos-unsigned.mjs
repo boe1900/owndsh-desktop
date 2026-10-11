@@ -75,6 +75,7 @@ export async function macosUnsigned(source) {
     file: 'apps/desktop/scripts/package-target.ts',
     replacements: [
       [`import { spawn } from 'node:child_process'`, `import { execFile, spawn } from 'node:child_process'`],
+      [`import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'`, `import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs'`],
       [`import { join, resolve } from 'node:path'`, `import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'`],
       [`/** \`--build-version\` value that numbers a build after the ones already taken. */
@@ -126,10 +127,26 @@ const AUTOMATIC_BUILD_VERSION = 'auto'`],
   }
   for (const name of WINDOWS_SIGNING_ENV_NAMES) {`],
       [`  if (target.platform === 'darwin' && !invocation.directory) {`, `  if (target.platform === 'darwin' && invocation.unsignedMac) {
+    const appPath = join(buildPaths.unsignedArtifacts, target.arch === 'arm64' ? 'mac-arm64' : 'mac', 'DeepSeek Harness.app')
     await execute([...desktopElectronBuilderArguments(target, true), '--config.mac.notarize=false'], electronBuilderEnv)
-    await signMacOSAppAdHoc(join(buildPaths.unsignedArtifacts, target.arch === 'arm64' ? 'mac-arm64' : 'mac', 'DeepSeek Harness.app'))
+    await signMacOSAppAdHoc(appPath)
+    for (const format of ['dmg', 'zip'] as const) {
+      const output = join(buildPaths.root, format === 'dmg' ? 'unsigned-dmg-artifacts' : 'unsigned-zip-artifacts')
+      rmSync(output, { recursive: true, force: true })
+      await execute(desktopElectronBuilderArguments(target, false, {
+        format,
+        appPath,
+        output,
+      }), electronBuilderEnv)
+      for (const entry of readdirSync(output)) {
+        const destination = join(buildPaths.unsignedArtifacts, entry)
+        rmSync(destination, { recursive: true, force: true })
+        renameSync(join(output, entry), destination)
+      }
+      rmSync(output, { recursive: true, force: true })
+    }
+    await signMacOSAppAdHoc(appPath)
     await execute(['exec', 'tsx', 'scripts/smoke-packaged-runtime.ts', '--unsigned-mac'], targetEnv)
-    await execute([...desktopElectronBuilderArguments(target, false), '--config.mac.notarize=false'], electronBuilderEnv)
   } else if (target.platform === 'darwin' && !invocation.directory) {`],
       ['  if (!invocation.directory && !invocation.unsigned) writeReleaseRecord(target, electronBuilderEnv, buildPaths.artifacts)', '  if (!invocation.directory && !invocation.unsigned && !invocation.unsignedMac) writeReleaseRecord(target, electronBuilderEnv, buildPaths.artifacts)'],
     ],
