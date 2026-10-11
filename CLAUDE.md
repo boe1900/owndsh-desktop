@@ -18,7 +18,7 @@ patches/branding.mjs - OwnDsh Desktop 名称、appId 默认值、协议、平台
 patches/cli-isolation.mjs - 独立 owndsh CLI 命令及命令所有权元数据
 patches/data-isolation.mjs - 独立 DSH_HOME、Electron userData 和 sessionData
 patches/port-isolation.mjs - Host WebServer 使用操作系统分配的空闲端口，支持与官方端并行运行
-patches/macos-unsigned.mjs - 无 Apple 凭据时生成 macOS ARM64/x64 产物，并用 ad-hoc 签名满足 ShipIt 完整性校验，保留官方签名路径
+patches/macos-unsigned.mjs - 无 Apple 凭据时生成 macOS ARM64/x64 产物，并用带稳定 designated requirement 的 ad-hoc 签名满足 ShipIt 完整性校验，保留官方签名路径
 patches/packaging.mjs - 打包配置接缝（OWNDSH-PACKAGING）
 patches/github-updates.mjs - unsigned 包接入 OwnDsh GitHub Release nightly 更新源，保留签名发行路径
 patches/account-menu.mjs - 移除右下角更多菜单中的官方登录和意见反馈入口

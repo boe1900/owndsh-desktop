@@ -64,7 +64,7 @@ try {
   assert.ok(packageTarget.includes("'unsigned-mac': { type: 'boolean', default: false }"), 'macOS unsigned option missing')
   assert.ok(packageTarget.includes('invocation.unsignedMac'), 'macOS unsigned target path missing')
   assert.ok(packageTarget.includes("electronBuilderEnv.CSC_IDENTITY_AUTO_DISCOVERY = 'false'"), 'macOS unsigned signing disable missing')
-  assert.ok(packageTarget.includes("await executeFile('/usr/bin/codesign', ['--deep', '--force', '--sign', '-', appPath]"), 'macOS unsigned ad-hoc signing missing')
+  assert.ok(packageTarget.includes("'--requirements', '=designated => identifier \"Electron\"'"), 'macOS unsigned stable designated requirement missing')
   assert.ok(packageTarget.includes("await executeFile('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath]"), 'macOS unsigned signature verification missing')
   assert.ok(packageTarget.includes("const appPath = join(buildPaths.unsignedArtifacts"), 'macOS unsigned final app path missing')
   assert.ok(packageTarget.includes("for (const format of ['dmg', 'zip'] as const)"), 'macOS unsigned artifacts must use both formats')

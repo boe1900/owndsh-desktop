@@ -35,6 +35,8 @@ git push origin v0.2.0-rc.2.20261011.1
 
 Actions 完成三个平台构建后，会自动创建或更新同名 Release。标签版本必须高于已安装版本；当前旧版 `0.2.0-rc.2` 需要先手动安装一次带更新配置的新包，之后才能自动升级。
 
+macOS 的早期 unsigned 构建使用了按 cdhash 绑定的临时 ad-hoc 签名，不能升级到后续签名身份改变的版本；这类版本需要先手动安装带稳定 designated requirement 的过渡版本。安装过渡版本后，再发布的 macOS unsigned 版本即可验证自动更新链路。
+
 ## 与官方 Desktop 的关系
 
 保留官方 Electron 外壳的全部原生能力，只在明确的发行接缝上做七件事：
