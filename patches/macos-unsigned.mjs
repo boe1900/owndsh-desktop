@@ -83,8 +83,9 @@ const AUTOMATIC_BUILD_VERSION = 'auto'`, `const executeFile = promisify(execFile
 
 /** 为 macOS unsigned 包补齐 ShipIt 所需的 ad-hoc 外层资源签名与稳定身份。 */
 async function signMacOSAppAdHoc(appPath: string): Promise<void> {
+  await executeFile('/usr/bin/codesign', ['--deep', '--force', '--sign', '-', appPath], { timeout: 120_000 })
   await executeFile('/usr/bin/codesign', [
-    '--deep', '--force', '--sign', '-',
+    '--force', '--sign', '-',
     '--requirements', '=designated => identifier "Electron"',
     appPath,
   ], { timeout: 120_000 })
