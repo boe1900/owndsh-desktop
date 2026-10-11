@@ -64,6 +64,8 @@ try {
   assert.ok(packageTarget.includes("'unsigned-mac': { type: 'boolean', default: false }"), 'macOS unsigned option missing')
   assert.ok(packageTarget.includes('invocation.unsignedMac'), 'macOS unsigned target path missing')
   assert.ok(packageTarget.includes("electronBuilderEnv.CSC_IDENTITY_AUTO_DISCOVERY = 'false'"), 'macOS unsigned signing disable missing')
+  assert.ok(packageTarget.includes("await executeFile('/usr/bin/codesign', ['--deep', '--force', '--sign', '-', appPath]"), 'macOS unsigned ad-hoc signing missing')
+  assert.ok(packageTarget.includes("await executeFile('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath]"), 'macOS unsigned signature verification missing')
   const smoke = readFileSync(join(sandbox, 'apps/desktop/scripts/smoke-packaged-runtime.ts'), 'utf8')
   assert.ok(smoke.includes("'unsigned-mac'"), 'macOS unsigned smoke option missing')
 

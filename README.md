@@ -8,7 +8,7 @@
 
 从 [Latest Release](https://github.com/boe1900/owndsh-desktop/releases/latest) 下载对应平台的安装包：Apple Silicon（M 系列）选择 `mac-arm64`，Intel Mac 选择 `mac-x64`，Windows 选择 `win-x64`。
 
-公开 macOS 包未签名，首次启动可能被 Gatekeeper 拦截：
+公开 macOS 包没有 Apple Developer 证书签名或 notarization；构建时会生成 ad-hoc 完整性签名供自动更新器校验，首次启动仍可能被 Gatekeeper 拦截：
 
 1. 打开 `.dmg`，将 `OwnDsh Desktop.app` 拖入“应用程序”。
 2. 在“应用程序”中右键点击 `OwnDsh Desktop.app`，选择“打开”；如果系统仍拦截，打开“系统设置 → 隐私与安全性”，点击“仍要打开”。
@@ -49,7 +49,7 @@ Actions 完成三个平台构建后，会自动创建或更新同名 Release。�
 
 这样官方 Desktop 与 OwnDsh Desktop 可以并行安装；官方 CLI 仍叫 `dsh`，OwnDsh Desktop 的独立命令叫 `owndsh`，两者的数据契约分别由 `DSH_HOME` 控制。
 
-公开构建提供 Windows x64、macOS ARM64 和 macOS Intel 的 unsigned 包。它们不需要开发者证书，但 macOS 首次打开时会显示“无法验证开发者”；有 Apple Developer 凭据后可沿用官方签名与 notarization 流程。
+公开构建提供 Windows x64、macOS ARM64 和 macOS Intel 的 unsigned 包。它们不需要开发者证书；macOS 包只使用 ad-hoc 签名来支持 ShipIt 自动替换，不会获得开发者信任或 notarization，首次打开时仍可能显示“无法验证开发者”。有 Apple Developer 凭据后可沿用官方签名与 notarization 流程。
 
 ## 目录结构
 

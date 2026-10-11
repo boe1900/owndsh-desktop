@@ -123,7 +123,7 @@ export async function branding(source) {
       ["'DeepSeek Harness.exe'", "'OwnDsh Desktop.exe'"],
       ["'MacOS', 'DeepSeek Harness'", "'MacOS', 'OwnDsh Desktop'"],
     ], '打包冒烟脚本定位 OwnDsh Desktop 应用'],
-    ['apps/desktop/scripts/package-target.ts', [["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'"]], 'macOS 目标打包定位 OwnDsh Desktop 应用'],
+    ['apps/desktop/scripts/package-target.ts', [["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'", 2]], 'macOS 目标打包定位 OwnDsh Desktop 应用并保留 unsigned ad-hoc 签名路径'],
     ['apps/desktop/scripts/package-macos.ts', [
       ["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'"],
       ['`deepseek-harness-${version}-mac-${arch}`', '`owndsh-desktop-${version}-mac-${arch}`'],

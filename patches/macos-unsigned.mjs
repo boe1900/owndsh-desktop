@@ -1,7 +1,7 @@
 /**
  * [INPUT]: 官方 macOS 打包校验、Electron Builder 配置、目标打包器和冒烟脚本
- * [OUTPUT]: 不依赖 Apple 证书即可生成 OwnDsh macOS ARM64/x64 unsigned 产物
- * [POS]: patches/ 的开源发行接缝；只增加 unsigned 路径，保留官方签名发行路径
+ * [OUTPUT]: 不依赖 Apple 证书即可生成带 ad-hoc 完整性签名的 OwnDsh macOS ARM64/x64 产物
+ * [POS]: patches/ 的开源 macOS 发行接缝；增加 unsigned/ad-hoc 路径，保留官方签名发行路径
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { applyPatch } from './apply.mjs'
@@ -74,6 +74,20 @@ export async function macosUnsigned(source) {
     marker: 'OWNDSH-MAC-UNSIGNED',
     file: 'apps/desktop/scripts/package-target.ts',
     replacements: [
+      [`import { spawn } from 'node:child_process'`, `import { execFile, spawn } from 'node:child_process'`],
+      [`import { join, resolve } from 'node:path'`, `import { join, resolve } from 'node:path'
+import { promisify } from 'node:util'`],
+      [`/** \`--build-version\` value that numbers a build after the ones already taken. */
+const AUTOMATIC_BUILD_VERSION = 'auto'`, `const executeFile = promisify(execFile)
+
+/** 为 macOS unsigned 包补齐 ShipIt 所需的 ad-hoc 外层资源签名。 */
+async function signMacOSAppAdHoc(appPath: string): Promise<void> {
+  await executeFile('/usr/bin/codesign', ['--deep', '--force', '--sign', '-', appPath], { timeout: 120_000 })
+  await executeFile('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath], { timeout: 120_000 })
+}
+
+/** \`--build-version\` value that numbers a build after the ones already taken. */
+const AUTOMATIC_BUILD_VERSION = 'auto'`],
       [`  readonly unsigned: boolean
   readonly check: boolean`, `  readonly unsigned: boolean
   readonly unsignedMac: boolean
@@ -113,6 +127,7 @@ export async function macosUnsigned(source) {
   for (const name of WINDOWS_SIGNING_ENV_NAMES) {`],
       [`  if (target.platform === 'darwin' && !invocation.directory) {`, `  if (target.platform === 'darwin' && invocation.unsignedMac) {
     await execute([...desktopElectronBuilderArguments(target, true), '--config.mac.notarize=false'], electronBuilderEnv)
+    await signMacOSAppAdHoc(join(buildPaths.unsignedArtifacts, target.arch === 'arm64' ? 'mac-arm64' : 'mac', 'DeepSeek Harness.app'))
     await execute(['exec', 'tsx', 'scripts/smoke-packaged-runtime.ts', '--unsigned-mac'], targetEnv)
     await execute([...desktopElectronBuilderArguments(target, false), '--config.mac.notarize=false'], electronBuilderEnv)
   } else if (target.platform === 'darwin' && !invocation.directory) {`],
