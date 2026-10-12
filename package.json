@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "OwnDsh desktop build from the official DeepSeek Harness Electron app",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "engines": { "node": "^24" },
   "scripts": {
     "test": "node --test patches/patches.test.mjs build/prepare-release.test.mjs",

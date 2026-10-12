@@ -28,7 +28,7 @@ build/checkout.mjs - 官方源码检出；复用 worktree 时 reset --hard 清�
 build/build.mjs - 检出 → 施加补丁 → 官方原生构建流水线的编排入口；标签构建可传递 DSH_DESKTOP_BUILD_VERSION
 build/prepare-release.mjs - 校验三平台产物后汇总 Release 资产，用实际 ZIP 校验值生成同时覆盖 ARM64/x64 的 nightly-mac.yml
 OFFICIAL-DESKTOP-PATCHES.md - 补丁台账、登录掐断边界与升级步骤
-LICENSE - GPL-3.0-or-later
+LICENSE - OwnDsh 自有补丁、构建脚本、资源和文档的 MIT 许可证；上游 Harness 与第三方依赖按各自许可证执行
 .gitignore / .gitattributes - 产物和秘密排除、跨平台文本换行
 </config>
 
