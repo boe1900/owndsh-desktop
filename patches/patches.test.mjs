@@ -1,6 +1,6 @@
 /**
  * [INPUT]: patches/ 下全部补丁与一份临时官方 checkout
- * [OUTPUT]: 全部补丁锚点命中且登录链路被掐断的通过证据
+ * [OUTPUT]: 全部补丁锚点命中、登录链路被掐断且 CLI/配置头部语法正确的通过证据
  * [POS]: patches/ 的唯一验收入口；失败立即阻断构建
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -136,6 +136,7 @@ try {
   for (const name of ['.env.windows.example', '.env.macos.example']) {
     const env = readFileSync(join(sandbox, 'apps/desktop', name), 'utf8')
     assert.ok(env.includes('DSH_DESKTOP_APP_ID=com.owndsh.desktop'), `${name} OwnDsh appId missing`)
+    assert.ok(env.split('\n').slice(0, 4).every(line => line.startsWith('# ')), `${name} must use environment comments`)
   }
 
   for (const [file, expected] of [
@@ -158,6 +159,15 @@ try {
   }
 
   assert.equal(readFileSync(join(sandbox, 'apps/desktop/cli/owndsh'), 'utf8').split('\n', 1)[0], '#!/bin/sh', 'macOS CLI shebang must remain first')
+  assert.equal(readFileSync(join(sandbox, 'apps/desktop/cli/owndsh.cmd'), 'utf8').split(/\r?\n/, 1)[0], '@echo off', 'Windows CLI echo control must remain first')
+  for (const [file, start, comment] of [
+    ['apps/desktop/cli/owndsh', 1, '# '],
+    ['apps/desktop/cli/owndsh.cmd', 1, '@rem '],
+    ['apps/desktop/scripts/command-path.ps1', 0, '# '],
+  ]) {
+    const lines = readFileSync(join(sandbox, file), 'utf8').split(/\r?\n/)
+    assert.ok(lines.slice(start, start + 4).every(line => line.startsWith(comment)), `${file} must use native comments`)
+  }
   assert.equal((readFileSync(join(sandbox, 'apps/desktop/cli/owndsh'), 'utf8').match(/\[INPUT\]: 官方/g) ?? []).length, 1, 'macOS CLI must have one L3 header')
   assert.equal((readFileSync(join(sandbox, 'apps/desktop/cli/owndsh.cmd'), 'utf8').match(/\[INPUT\]: 官方/g) ?? []).length, 1, 'Windows CLI must have one L3 header')
 

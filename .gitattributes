@@ -3,4 +3,3 @@
 *.rs text eol=lf
 *.yml text eol=lf
 *.png binary
-assets/NODE-LICENSE -whitespace

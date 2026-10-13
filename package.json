@@ -7,7 +7,7 @@
   "license": "MIT",
   "engines": { "node": "^24" },
   "scripts": {
-    "test": "node --test patches/patches.test.mjs build/prepare-release.test.mjs",
+    "test": "node --test patches/apply.test.mjs patches/patches.test.mjs build/prepare-release.test.mjs",
     "build": "node build/build.mjs"
   }
 }

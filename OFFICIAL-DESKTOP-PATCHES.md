@@ -4,6 +4,10 @@
 
 `patches/patches.test.mjs` 在每次运行时对沙箱副本施加全部补丁并断言每条接缝；官方升级改动了任何锚点上下文时会立即失败，不要放宽断言。
 
+`apply.mjs` 的 L3 头部遵循目标文件语法：批处理使用 `@rem`，Shell、PowerShell 和 `.env` 使用 `#`，其余源码保留块注释；shebang 与 `@echo off` 保持首行，多补丁标记合并到单个头部。`apply.test.mjs` 验证头部折叠与旧头部迁移，并在目标平台运行无害的脚本夹具，防止注释被当作命令执行。
+
+`macosUnsigned` 必须先于 `branding`：前者在 macOS unsigned 路径插入第二处官方 App 名，后者断言两处锚点并统一改名。正式打包调用官方 `build:official`，其中 Client `tsc` 已覆盖账号菜单；接缝测试不替代类型检查。
+
 ## 新增补丁
 
 1. 在 `patches/` 建一个文件，用 `apply.mjs` 的 `applyPatch` 施加（锚点默认恰好一次，重复文本显式声明命中次数）。

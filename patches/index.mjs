@@ -1,7 +1,7 @@
 /**
  * [INPUT]: patches/ 下全部补丁与 upstream.json 锁定的插件版本
  * [OUTPUT]: 依次施加全部发行补丁的官方 checkout
- * [POS]: patches/ 的聚合入口；build/build.mjs 的唯一调用对象，新增补丁在此登记
+ * [POS]: patches/ 的聚合入口；build/build.mjs 的唯一调用对象，macOS unsigned 接缝必须先于品牌接缝，新增补丁在此登记
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { loginGate } from './login-gate.mjs'
@@ -21,6 +21,7 @@ import { accountMenu } from './account-menu.mjs'
  * @param pluginVersion - 预置的 owndsh-plugin 精确版本
  */
 export async function applyPatches(source, pluginVersion) {
+  // unsigned 接缝先插入第二处官方 App 名，branding 再按两处锚点统一替换。
   await macosUnsigned(source)
   await branding(source)
   await cliIsolation(source)

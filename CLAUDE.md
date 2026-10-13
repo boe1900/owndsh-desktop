@@ -11,7 +11,7 @@ build/ - 官方源码检出、打包编排与 Release 资产收口；不复制�
 
 <config>
 upstream.json - 官方 deepseek-harness 仓库、tag、不可变 commit 与预置插件版本的唯一锁
-patches/apply.mjs - 断言式替换底座；锚点默认必须命中一次，重复文本显式声明次数，统一单文件单 L3 头部并保留 shebang，官方升级改动了立即失败
+patches/apply.mjs - 断言式替换底座；锚点默认必须命中一次，重复文本显式声明次数，按目标语言生成单个 L3 头部并保留 shebang/@echo off，官方升级改动了立即失败
 patches/login-gate.mjs - 掐断官方登录入口（OWNDSH-PATCH-LOGIN-GATE）
 patches/plugin-seed.mjs - 预置 owndsh-plugin（PROFILE-SEED + RUNTIME-DEPENDENCY）
 patches/branding.mjs - OwnDsh Desktop 名称、appId 默认值、协议、平台图标与 macOS 本地网络用途声明
@@ -23,8 +23,9 @@ patches/packaging.mjs - 打包配置接缝（OWNDSH-PACKAGING）
 patches/github-updates.mjs - unsigned 包接入 OwnDsh GitHub Release nightly 更新源，保留签名发行路径
 patches/account-menu.mjs - 移除右下角更多菜单中的官方登录和意见反馈入口
 patches/index.mjs - 聚合入口；新增补丁在此登记一行
+patches/apply.test.mjs - 补丁头部回归验收，检查多补丁折叠、旧头部迁移及目标平台脚本执行
 patches/patches.test.mjs - 沙箱副本上的全接缝断言验收，官方升级时的第一道门禁
-build/checkout.mjs - 官方源码检出；复用 worktree 时 reset --hard 清回干净状态
+build/checkout.mjs - 官方源码检出；复用 bare Git 对象，每次按锁定 commit 重建 worktree
 build/build.mjs - 检出 → 施加补丁 → 官方原生构建流水线的编排入口；标签构建可传递 DSH_DESKTOP_BUILD_VERSION
 build/prepare-release.mjs - 校验三平台产物后汇总 Release 资产，用实际 ZIP 校验值生成同时覆盖 ARM64/x64 的 nightly-mac.yml
 OFFICIAL-DESKTOP-PATCHES.md - 补丁台账、登录掐断边界与升级步骤
