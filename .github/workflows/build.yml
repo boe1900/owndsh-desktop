@@ -60,8 +60,7 @@ jobs:
       - name: Build
         env:
           DSH_DESKTOP_TARGET: ${{ matrix.target }}
-          DSH_DESKTOP_UNSIGNED: ${{ matrix.target == 'win-x64' && '1' || '0' }}
-          DSH_DESKTOP_MAC_UNSIGNED: ${{ startsWith(matrix.target, 'mac-') && '1' || '0' }}
+          DSH_DESKTOP_UNSIGNED: '1'
         run: npm run build
 
       - name: Collect Windows artifacts
