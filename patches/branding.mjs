@@ -40,6 +40,8 @@ export async function branding(source) {
       [`    productName: 'DeepSeek Harness',`, `    productName: 'OwnDsh Desktop',`],
       ['    artifactName: `deepseek-harness-\\${version}-\\${os}-\\${arch}${output.suffix}.\\${ext}`,',
         '    artifactName: `owndsh-desktop-\\${version}-\\${os}-\\${arch}${output.suffix}.\\${ext}`,'],
+      [`      target: unsigned ? ['dmg'] : ['dmg', 'zip'],`,
+        `      target: unsigned ? ['dmg', 'zip'] : ['dmg', 'zip'],`],
       [`      extendInfo: { NSMicrophoneUsageDescription: 'DeepSeek Harness uses your microphone to transcribe speech into message drafts.' },`,
         `      extendInfo: {
         NSMicrophoneUsageDescription: 'OwnDsh Desktop uses your microphone to transcribe speech into message drafts.',

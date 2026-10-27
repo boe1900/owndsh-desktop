@@ -2,7 +2,7 @@
 
 基于 DeepSeek Harness 官方 Electron 桌面端构建的 OwnDsh 发行。本仓库不复制官方业务源码；所有差异由 `patches/` 在构建时对官方 checkout 施加，官方升级时以断言暴露接缝变化。
 
-当前锁定官方 `dsh-v0.2.0-rc.2`，预置 `owndsh-plugin@0.1.0-beta.17`（版本锁定见 `upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
+当前锁定官方 `dsh-v0.2.1-rc.3`，预置 `owndsh-plugin@0.1.0-beta.19`（版本锁定见 `upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
 
 ## 下载与首次启动
 
@@ -24,13 +24,13 @@ Windows 首次运行可能显示 SmartScreen 未验证发布者，选择“更�
 
 ## 自动更新
 
-unsigned 包已经接入 OwnDsh 的 GitHub Release。Windows 从 `nightly.yml` 更新，macOS 从同时包含 ARM64 和 Intel ZIP 的 `nightly-mac.yml` 更新；更新源地址是 [Latest Release assets](https://github.com/boe1900/owndsh-desktop/releases/latest/download)。向 `main` 推送代码不触发打包；推送 `v*` 标签时，GitHub Actions 会去掉标签开头的 `v` 作为构建版本，并校验、汇总 feed 文件、安装包和对应 blockmap 后发布到 Release；PR 和手动构建只产生 Actions Artifacts。当前产品版本是 `0.2.0-rc.2`，例如更新构建可以使用标签 `v0.2.0-rc.2.20261011.1`。只上传 `.exe` 或 `.dmg` 不能触发自动更新，Release 也必须是已发布的最新版本。
+unsigned 包已经接入 OwnDsh 的 GitHub Release。Windows 从 `nightly.yml` 更新，macOS 从同时包含 ARM64 和 Intel ZIP 的 `nightly-mac.yml` 更新；更新源地址是 [Latest Release assets](https://github.com/boe1900/owndsh-desktop/releases/latest/download)。向 `main` 推送代码不触发打包；推送 `v*` 标签时，GitHub Actions 会去掉标签开头的 `v` 作为构建版本，并校验、汇总 feed 文件、安装包和对应 blockmap 后发布到 Release；PR 和手动构建只产生 Actions Artifacts。当前产品版本是 `0.2.1-rc.3`，例如更新构建可以使用标签 `v0.2.1-rc.3`。只上传 `.exe` 或 `.dmg` 不能触发自动更新，Release 也必须是已发布的最新版本。
 
 发布时只需推送标签：
 
 ```sh
-git tag v0.2.0-rc.2.20261011.1
-git push origin v0.2.0-rc.2.20261011.1
+git tag v0.2.1-rc.3
+git push origin v0.2.1-rc.3
 ```
 
 Actions 完成三个平台构建后，会自动创建或更新同名 Release。标签版本必须高于已安装版本；当前旧版 `0.2.0-rc.2` 需要先手动安装一次带更新配置的新包，之后才能自动升级。

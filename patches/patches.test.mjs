@@ -72,6 +72,7 @@ try {
   assert.ok(builder.includes("protocols: [{ name: 'OwnDsh Desktop', schemes: ['owndsh'] }]"), 'OwnDsh protocol missing')
   assert.ok(builder.includes('NSLocalNetworkUsageDescription:'), 'macOS local network usage description missing')
   assert.ok(builder.includes('output.suffix'), 'official unsigned artifact suffix missing')
+  assert.ok(builder.includes("target: unsigned ? ['dmg', 'zip'] : ['dmg', 'zip']"), 'unsigned macOS ZIP target missing')
 
   // OWNDSH-GITHUB-UPDATES：unsigned 包携带 OwnDsh GitHub Release 更新源。
   assert.ok(builder.includes("https://github.com/boe1900/owndsh-desktop/releases/latest/download"), 'OwnDsh GitHub update source missing')
