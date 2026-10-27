@@ -20,11 +20,11 @@ export async function githubUpdates(source) {
       [`  const update = unsigned ? undefined : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)`,
         `  // OWNDSH-GITHUB-UPDATES: unsigned 公共包从 OwnDsh GitHub Release 读取 nightly feed。
   const update = unsigned
-    ? { publicUrl: ${JSON.stringify(UPDATE_URL)} }
+  ? { publicUrl: ${JSON.stringify(UPDATE_URL)}, channel: 'nightly' }
     : resolveDesktopAutoUpdateConfig(env, resolvedPlatform, resolvedArch)`],
-      [`    publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: 'nightly' }],`,
+      [`    publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: update.channel }],`,
         `    // OWNDSH-GITHUB-UPDATES: --publish never 只禁止上传，保留 app-update.yml 供已发布 Release 使用。
-    publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: 'nightly' }],`],
+    publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: update.channel }],`],
     ],
     output: 'unsigned 包启用 OwnDsh GitHub Release nightly 更新源',
   })

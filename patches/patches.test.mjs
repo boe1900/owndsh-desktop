@@ -55,28 +55,14 @@ try {
   const policyEnv = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-policy-environment.mjs'), 'utf8')
   assert.ok(policyEnv.includes("if (configuredOrigin === '') return undefined"), 'policy bypass missing')
 
-  // OWNDSH-MAC-UNSIGNED：公开构建不依赖 Apple Developer 凭据，签名发行路径仍保留。
+  // 官方 rc3 已提供 macOS unsigned 入口；OwnDsh 只复用其路径。
   const packageEnvironment = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-package-environment.mjs'), 'utf8')
-  assert.ok(packageEnvironment.includes('options.unsigned || options.unsignedMac'), 'macOS unsigned validation bypass missing')
+  assert.ok(packageEnvironment.includes('localMacOSPackageEnvironment'), 'official macOS unsigned environment missing')
   const prepareDsh = readFileSync(join(sandbox, 'apps/desktop/scripts/prepare-dsh.ts'), 'utf8')
-  assert.ok(prepareDsh.includes("process.env.DSH_DESKTOP_MAC_UNSIGNED !== '1'"), 'macOS unsigned runtime signing bypass missing')
   assert.ok(prepareDsh.includes('OWNDSH-PATCH-RUNTIME-RESOLUTION'), 'runtime resolver dependency seam missing')
   assert.ok(prepareDsh.includes(`'owndsh-plugin': ${JSON.stringify(PLUGIN_VERSION)}`), 'runtime dsh dependency missing')
   const packageTarget = readFileSync(join(sandbox, 'apps/desktop/scripts/package-target.ts'), 'utf8')
-  assert.ok(packageTarget.includes("'unsigned-mac': { type: 'boolean', default: false }"), 'macOS unsigned option missing')
-  assert.ok(packageTarget.includes('invocation.unsignedMac'), 'macOS unsigned target path missing')
-  assert.ok(packageTarget.includes("electronBuilderEnv.CSC_IDENTITY_AUTO_DISCOVERY = 'false'"), 'macOS unsigned signing disable missing')
-  assert.ok(packageTarget.includes("await executeFile('/usr/bin/codesign', ['--deep', '--force', '--sign', '-', appPath]"), 'macOS unsigned nested ad-hoc signing missing')
-  assert.ok(packageTarget.includes("'--identifier', 'com.owndsh.desktop'"), 'macOS unsigned stable identifier missing')
-  assert.ok(packageTarget.includes("'--requirements', '=designated => identifier \"com.owndsh.desktop\"'"), 'macOS unsigned stable designated requirement missing')
-  assert.ok(packageTarget.includes("await executeFile('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath]"), 'macOS unsigned signature verification missing')
-  assert.ok(packageTarget.includes("const appPath = join(buildPaths.unsignedArtifacts"), 'macOS unsigned final app path missing')
-  assert.ok(packageTarget.includes("for (const format of ['dmg', 'zip'] as const)"), 'macOS unsigned artifacts must use both formats')
-  assert.ok(packageTarget.includes("format === 'dmg' ? 'unsigned-dmg-artifacts' : 'unsigned-zip-artifacts'"), 'macOS unsigned formats need isolated builder outputs')
-  assert.ok(packageTarget.includes('appPath,\n        output,\n'), 'macOS unsigned artifacts must use the signed prepackaged app')
-  assert.ok(packageTarget.includes('renameSync(join(output, entry), destination)'), 'macOS unsigned artifacts must be promoted after isolated builds')
-  const smoke = readFileSync(join(sandbox, 'apps/desktop/scripts/smoke-packaged-runtime.ts'), 'utf8')
-  assert.ok(smoke.includes("'unsigned-mac'"), 'macOS unsigned smoke option missing')
+  assert.ok(packageTarget.includes("package:mac:arm64:unsigned") || packageTarget.includes('localMacOSPackageEnvironment'), 'official macOS unsigned path missing')
 
   // OWNDSH-BRANDING：官方身份切换为 OwnDsh Desktop，并与官方安装并行。
   const builder = readFileSync(join(sandbox, 'apps/desktop/scripts/electron-builder-config.mjs'), 'utf8')
@@ -84,11 +70,11 @@ try {
   assert.ok(builder.includes('artifactName: `owndsh-desktop-'), 'OwnDsh artifact name missing')
   assert.ok(builder.includes("protocols: [{ name: 'OwnDsh Desktop', schemes: ['owndsh'] }]"), 'OwnDsh protocol missing')
   assert.ok(builder.includes('NSLocalNetworkUsageDescription:'), 'macOS local network usage description missing')
-  assert.ok(builderIncludesMacUnsigned(builder), 'macOS unsigned builder seam missing')
+  assert.ok(builder.includes('output.suffix'), 'official unsigned artifact suffix missing')
 
   // OWNDSH-GITHUB-UPDATES：unsigned 包携带 OwnDsh GitHub Release 更新源。
   assert.ok(builder.includes("https://github.com/boe1900/owndsh-desktop/releases/latest/download"), 'OwnDsh GitHub update source missing')
-  assert.ok(builder.includes("publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: 'nightly' }]"), 'GitHub update feed metadata missing')
+  assert.ok(builder.includes("publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: update.channel }]"), 'GitHub update feed metadata missing')
 
   // OWNDSH-ACCOUNT-MENU：更多菜单不再暴露官方登录和反馈入口。
   const accountMenu = readFileSync(join(sandbox, 'packages/client/ui-settings-account/src/client/AccountMenu.tsx'), 'utf8')
@@ -104,10 +90,9 @@ try {
   assert.ok(mainSource.includes("setAsDefaultProtocolClient('owndsh')"), 'OwnDsh external protocol missing')
   assert.ok(mainSource.includes("url === 'owndsh://open'"), 'OwnDsh protocol wake-up missing')
 
-  // OWNDSH-PORT-ISOLATION：官方与 OwnDsh 并行启动时不抢固定 WebServer 端口。
+  // rc3 官方 Host 已使用回环地址和操作系统分配的端口。
   const desktopHost = readFileSync(join(sandbox, 'apps/desktop-host/src/index.ts'), 'utf8')
-  assert.ok(desktopHost.includes("args: ['--no-open', '--port', '0']"), 'OwnDsh Host must use an OS-assigned port')
-  assert.ok(!desktopHost.includes("args: ['--no-open', '--port', '19387']"), 'fixed WebServer port still present')
+  assert.ok(desktopHost.includes("args: ['--no-open', '--host', '127.0.0.1', '--port', '0']"), 'official Host must use isolated loopback port')
 
   const locale = readFileSync(join(sandbox, 'apps/desktop/src/locale.ts'), 'utf8')
   assert.ok(locale.includes("aboutProduct: 'OwnDsh Desktop'"), 'OwnDsh English locale missing')
@@ -177,11 +162,4 @@ try {
   console.log('owndsh: all seams verified on', PLUGIN_VERSION)
 } finally {
   rmSync(sandbox, { recursive: true, force: true })
-}
-
-function builderIncludesMacUnsigned(builder) {
-  return builder.includes("const unsignedMacOS = env.DSH_DESKTOP_MAC_UNSIGNED === '1'")
-    && builder.includes('const unsigned = unsignedWindows || unsignedMacOS')
-    && builder.includes('forceCodeSigning: !unsigned')
-    && builder.includes('if (unsigned || !artifact.file.endsWith(\'.dmg\')) return')
 }

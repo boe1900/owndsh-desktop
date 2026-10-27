@@ -10,8 +10,6 @@ import { packaging } from './packaging.mjs'
 import { branding } from './branding.mjs'
 import { cliIsolation } from './cli-isolation.mjs'
 import { dataIsolation } from './data-isolation.mjs'
-import { macosUnsigned } from './macos-unsigned.mjs'
-import { portIsolation } from './port-isolation.mjs'
 import { githubUpdates } from './github-updates.mjs'
 import { accountMenu } from './account-menu.mjs'
 
@@ -21,12 +19,9 @@ import { accountMenu } from './account-menu.mjs'
  * @param pluginVersion - 预置的 owndsh-plugin 精确版本
  */
 export async function applyPatches(source, pluginVersion) {
-  // unsigned 接缝先插入第二处官方 App 名，branding 再按两处锚点统一替换。
-  await macosUnsigned(source)
   await branding(source)
   await cliIsolation(source)
   await dataIsolation(source)
-  await portIsolation(source)
   await loginGate(source)
   await pluginSeed(source, pluginVersion)
   await packaging(source)

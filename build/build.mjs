@@ -31,8 +31,6 @@ async function main() {
   assert.ok(PLUGIN_VERSION !== undefined, 'upstream.json or OWNDSH_PLUGIN_VERSION must set the plugin version')
   const target = process.env.DSH_DESKTOP_TARGET ?? 'win-x64'
   const unsignedFlag = process.env.DSH_DESKTOP_UNSIGNED === '1' ? ':unsigned' : ''
-  const macUnsigned = process.env.DSH_DESKTOP_MAC_UNSIGNED === '1'
-  assert.equal(macUnsigned && !target.startsWith('mac-'), false, 'DSH_DESKTOP_MAC_UNSIGNED requires a macOS target')
   // 官方 script 名用冒号分隔平台（package:win:x64），package-target.ts 参数用连字符（win-x64）。
   const scriptTarget = target.replaceAll('-', ':')
   const source = await checkoutOfficial()
@@ -55,10 +53,8 @@ async function main() {
   const requestedBuildVersion = process.env.DSH_DESKTOP_BUILD_VERSION?.trim()
   const buildVersionArgs = requestedBuildVersion === undefined || requestedBuildVersion === ''
     ? [] : ['--build-version', requestedBuildVersion]
-  const packageArgs = macUnsigned
-    ? ['--filter', '@deepseek-ai/dsh-desktop', 'run', 'package', '--', target, '--unsigned-mac', ...buildVersionArgs]
-    : ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${scriptTarget}${unsignedFlag}`,
-      ...(buildVersionArgs.length === 0 ? [] : ['--', ...buildVersionArgs])]
+  const packageArgs = ['--filter', '@deepseek-ai/dsh-desktop', 'run', `package:${scriptTarget}${unsignedFlag}`,
+    ...(buildVersionArgs.length === 0 ? [] : ['--', ...buildVersionArgs])]
   await run('pnpm', packageArgs, source)
 
   const infoPath = join(REPO_ROOT, '.build', 'build-info-official.json')

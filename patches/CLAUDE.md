@@ -8,12 +8,10 @@ plugin-seed.mjs: 首次 profile 播种 owndsh-plugin，把它登记到 dsh 运�
 branding.mjs: 切换 OwnDsh Desktop 产品名、appId 默认值、外部协议和平台图标，声明 macOS 本地网络用途
 cli-isolation.mjs: 将全局 CLI 命令改为 owndsh，负责启动器内容与名称，并隔离 macOS 收据、Windows 注册表和 PATH 探测
 data-isolation.mjs: 在 main process 启动早期设置独立 DSH_HOME、userData 和 sessionData
-port-isolation.mjs: 让 Host 的 WebServer 使用操作系统分配的空闲端口，避免与官方 Desktop 并行运行时冲突
-macos-unsigned.mjs: 无 Apple 凭据时生成 macOS ARM64/x64 产物，先以稳定 designated requirement 签名最终 App，再以 prepackaged App 生成 DMG/ZIP，并用严格校验补齐 ShipIt 完整性，保留官方签名发行路径
 packaging.mjs: 打包配置接缝，策略 origin 未配置时跳过强制更新策略注入
 github-updates.mjs: unsigned 包改用 OwnDsh GitHub Release 的 nightly 更新源，签名发行路径保留官方配置
 account-menu.mjs: 从右下角更多菜单移除官方登录与意见反馈，保留设置和已登录后的退出登录
-index.mjs: 聚合入口，applyPatches 依次施加全部补丁；macosUnsigned 先插入官方 App 名锚点，再由 branding 统一替换；新增补丁在此登记
+index.mjs: 聚合入口，applyPatches 依次施加全部补丁；新增补丁在此登记
 patches.test.mjs: 沙箱副本上的全接缝断言验收，npm test 的执行对象
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

@@ -6,7 +6,7 @@
 
 `apply.mjs` 的 L3 头部遵循目标文件语法：批处理使用 `@rem`，Shell、PowerShell 和 `.env` 使用 `#`，其余源码保留块注释；shebang 与 `@echo off` 保持首行，多补丁标记合并到单个头部。`apply.test.mjs` 验证头部折叠与旧头部迁移，并在目标平台运行无害的脚本夹具，防止注释被当作命令执行。
 
-`macosUnsigned` 必须先于 `branding`：前者在 macOS unsigned 路径插入第二处官方 App 名，后者断言两处锚点并统一改名。正式打包调用官方 `build:official`，其中 Client `tsc` 已覆盖账号菜单；接缝测试不替代类型检查。
+rc3 已提供 macOS ARM64/x64 的官方 `package:mac:*:unsigned` 入口，OwnDsh 直接复用；正式打包调用官方 `build:official`，其中 Client `tsc` 已覆盖账号菜单。接缝测试不替代类型检查。
 
 ## 新增补丁
 
@@ -31,17 +31,13 @@
 | `OWNDSH-BRANDING` | `apps/desktop/resources/*` | 复制 OwnDsh 1104/About、Windows、macOS 和多尺寸托盘图标；平台 PNG 保持官方 1024×1024 规格与圆角内缩。 | 检查官方资源文件名和 builder 引用未变化；修改 `assets/icon.png` 后重生成全部派生资源。 |
 | `OWNDSH-CLI-ISOLATION` | `apps/desktop/cli/*`、`apps/desktop/scripts/prepare-cli.ts`、`apps/desktop/src/command-*`、`apps/desktop/scripts/command-path.ps1`、`apps/desktop/src/locale.ts` | 将 OwnDsh 的全局命令注册为 `owndsh`，同时负责 CLI 启动器品牌、macOS 收据、Windows 注册表键、互斥键和 PATH 探测隔离；底层 CLI 仍复用官方实现。 | 检查官方命令入口、CLI 启动器、macOS 固定目标、Windows `owndsh.cmd` 检测和命令管理 UI 的接缝；若官方命令管理重构，重新确认两端安装不会争抢状态。 |
 | `OWNDSH-DATA-ISOLATION` | `apps/desktop/src/main.ts` | 在日志、Host 和 profile 初始化前默认设置 `DSH_HOME=~/.owndsh`，并隔离 Electron `userData`/`sessionData`；显式环境变量仍优先。 | 检查 `app.setAppLogsPath()` 仍位于数据路径设置之后，且官方所有 Host/credentials/cache 路径继续从 `DSH_HOME` 派生。 |
-| `OWNDSH-PORT-ISOLATION` | `apps/desktop-host/src/index.ts` | 将 WebServer 启动参数从固定 `19387` 改为 `0`，由操作系统分配空闲回环端口；官方 Host 与 OwnDsh 可同时运行，Host 仍通过 `ctx.webServer.port` 生成真实访问 URL。 | 检查官方 Host 仍把 WebServer 端口作为启动参数传给 profile，且 `dsh-host-webserver` 仍支持 `port: 0` 并暴露实际监听端口。 |
-| `OWNDSH-MAC-UNSIGNED` | `apps/desktop/scripts/desktop-package-environment.mjs`、`apps/desktop/scripts/electron-builder-config.mjs`、`apps/desktop/scripts/package-target.ts`、`apps/desktop/scripts/smoke-packaged-runtime.ts` | 无 Apple Developer 凭据时生成 macOS ARM64/x64 `.dmg`/`.zip`，使用独立 unsigned-artifacts 目录；先对嵌套代码签普通 ad-hoc，再对最终 `.app` 固定 `com.owndsh.desktop` 签名 identifier 与 designated requirement 并严格校验；用该 prepackaged App 生成 DMG/ZIP，补齐 ShipIt 所需的资源封印，官方签名路径保持不变。ad-hoc 签名不提供 Gatekeeper 信任或 notarization。 | 检查官方 `--unsigned-mac` 入口、macOS builder 的签名与 notarization hook、最终 prepackaged App 的稳定 designated requirement、ad-hoc 签名和冒烟路径仍存在；CI 还必须解压最终 ZIP 做严格校验。若上游改动签名前置校验，重新确认 unsigned 只绕过凭据而不绕过运行时验收。 |
 | `OWNDSH-PACKAGING` | `apps/desktop/scripts/desktop-policy-environment.mjs` | 官方打包强制要求强制更新策略 origin；社区包没有官方策略服务，配假 origin 会把页面来源校验指向不存在的域。origin 未配置时返回 undefined，官方 builder 的 beforePack 本就有 `if (policy === undefined) return` 分支，自然跳过策略注入。 | 检查官方 builder 仍保留 policy 为 undefined 时的跳过分支。 |
 | `OWNDSH-GITHUB-UPDATES` | `apps/desktop/scripts/electron-builder-config.mjs` | unsigned 包把 electron-updater 的 generic 源指向 `https://github.com/boe1900/owndsh-desktop/releases/latest/download`，Windows 读取 `nightly.yml`，macOS 读取 `nightly-mac.yml`；签名构建保留官方更新配置。 | 检查官方 `publish` 配置和 macOS `app-update.yml` 写入仍由同一 builder 接缝控制；Release 必须保留 feed、安装包和对应 blockmap 的原始文件名。 |
 | `OWNDSH-ACCOUNT-MENU` | `packages/client/ui-settings-account/src/client/AccountMenu.tsx` | 从右下角更多菜单移除官方登录和意见反馈，保留设置与已登录后的退出登录；企业登录由 `owndsh-plugin` 门禁负责。 | 检查官方账号菜单的注入 props、菜单项 id 和登录对话框挂载点；若官方把入口移到新的 launcher，重新确认 OwnDsh 没有暴露官方账号体系。 |
 
 ## 打包配置
 
-`build/build.mjs` 把已由 `OWNDSH-BRANDING` 改写的官方 `apps/desktop/.env.windows.example` 复制为 `.env.windows`。appId 默认是 `com.owndsh.desktop`，策略 origin 为空触发 `OWNDSH-PACKAGING` 的跳过；unsigned 构建还会在包内写入 OwnDsh GitHub Release 更新源；构建资源来自 `assets/`。
-
-macOS unsigned 更新的签名身份必须保持稳定。按 cdhash 签名的历史包不能升级到稳定 requirement 版本，发布稳定 requirement 的过渡版本时需要用户手动安装一次；之后的版本才用于自动更新验收。
+`build/build.mjs` 把已由 `OWNDSH-BRANDING` 改写的官方 `apps/desktop/.env.windows.example` 复制为 `.env.windows`。appId 默认是 `com.owndsh.desktop`，策略 origin 为空触发 `OWNDSH-PACKAGING` 的跳过；unsigned 构建使用官方 macOS/Windows unsigned 入口，并在包内写入 OwnDsh GitHub Release 更新源；构建资源来自 `assets/`。
 
 ## GitHub Release 更新文件
 
@@ -61,6 +57,6 @@ release job 必须保留各平台 Artifact 的独立目录，禁止先用 `merge
 2. 运行 `npm test`。补丁接缝不匹配时会立即失败，不要放宽断言。
 3. 阅读新生成源码中 `OWNDSH-PATCH-*` 和 `OWNDSH-PACKAGING` 标记，确认官方上下文没有改变。
 4. **官方已实现的能力立即删除对应接缝**。`OWNDSH-PATCH-WIN-TRAY` 即为此例：早期官方外壳没有 Windows 托盘，rc.2 在 `src/tray.ts` 实现了完整的 `DesktopTray`，补丁变为重复声明并破坏 tsc。每个补丁只做官方还没做的事。
-5. 在目标机器运行 `npm run build` 和打包后冒烟。
+5. 在目标机器运行 `npm run build` 和打包后冒烟；macOS unsigned 使用官方 `package:mac:arm64:unsigned` 或 `package:mac:x64:unsigned`。
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

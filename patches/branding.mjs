@@ -38,11 +38,10 @@ export async function branding(source) {
       [`    protocols: [{ name: 'DeepSeek Harness', schemes: ['dsh'] }],`,
         `    protocols: [{ name: 'OwnDsh Desktop', schemes: ['owndsh'] }],`],
       [`    productName: 'DeepSeek Harness',`, `    productName: 'OwnDsh Desktop',`],
-      ['    artifactName: `deepseek-harness-\\${version}-\\${os}-\\${arch}${unsigned ? \'-unsigned\' : \'\'}.\\${ext}`,',
-        '    artifactName: `owndsh-desktop-\\${version}-\\${os}-\\${arch}${unsigned ? \'-unsigned\' : \'\'}.\\${ext}`,'],
+      ['    artifactName: `deepseek-harness-\\${version}-\\${os}-\\${arch}${output.suffix}.\\${ext}`,',
+        '    artifactName: `owndsh-desktop-\\${version}-\\${os}-\\${arch}${output.suffix}.\\${ext}`,'],
       [`      extendInfo: { NSMicrophoneUsageDescription: 'DeepSeek Harness uses your microphone to transcribe speech into message drafts.' },`,
         `      extendInfo: {
-        CFBundleLocalizations: ['en', 'zh_CN'],
         NSMicrophoneUsageDescription: 'OwnDsh Desktop uses your microphone to transcribe speech into message drafts.',
         NSLocalNetworkUsageDescription: 'OwnDsh Desktop needs access to your local network to connect to the enterprise server.',
       },`],
@@ -58,7 +57,6 @@ export async function branding(source) {
         `readonly protocols: readonly [{ readonly name: 'OwnDsh Desktop'; readonly schemes: readonly ['owndsh'] }]`],
       [`readonly extendInfo: { readonly NSMicrophoneUsageDescription: string }`,
         `readonly extendInfo: {
-      readonly CFBundleLocalizations: readonly ['en', 'zh_CN']
       readonly NSMicrophoneUsageDescription: string
       readonly NSLocalNetworkUsageDescription: string
     }`],
@@ -123,14 +121,14 @@ export async function branding(source) {
       ["'DeepSeek Harness.exe'", "'OwnDsh Desktop.exe'"],
       ["'MacOS', 'DeepSeek Harness'", "'MacOS', 'OwnDsh Desktop'"],
     ], '打包冒烟脚本定位 OwnDsh Desktop 应用'],
-    ['apps/desktop/scripts/package-target.ts', [["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'", 2]], 'macOS 目标打包定位 OwnDsh Desktop 应用并保留 unsigned ad-hoc 签名路径'],
+    ['apps/desktop/scripts/package-target.ts', [["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'"]], 'macOS 目标打包定位 OwnDsh Desktop 应用并复用官方 unsigned 路径'],
     ['apps/desktop/scripts/package-macos.ts', [
       ["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'"],
       ['`deepseek-harness-${version}-mac-${arch}`', '`owndsh-desktop-${version}-mac-${arch}`'],
     ], 'macOS 发行脚本使用 OwnDsh 应用和制品名'],
     ['apps/desktop/scripts/desktop-upload-plan.ts', [['`deepseek-harness-${buildVersion}-${target.os}-${target.arch}`', '`owndsh-desktop-${buildVersion}-${target.os}-${target.arch}`']], '上传计划使用 OwnDsh 制品前缀'],
     ['apps/desktop/scripts/desktop-build-version-discovery.ts', [
-      ['/(?:^|\\/)deepseek-harness-(?<version>.+)-(?:mac|win)-(?:arm64|x64)(?:-unsigned)?\\.(?:exe|dmg|zip)$/u', '/(?:^|\\/)owndsh-desktop-(?<version>.+)-(?:mac|win)-(?:arm64|x64)(?:-unsigned)?\\.(?:exe|dmg|zip)$/u'],
+      ['/(?:^|\\/)deepseek-harness-(?<version>.+)-(?:mac|win)-(?:arm64|x64)(?:-unsigned|-unnotarized)?\\.(?:exe|dmg|zip)$/u', '/(?:^|\\/)owndsh-desktop-(?<version>.+)-(?:mac|win)-(?:arm64|x64)(?:-unsigned|-unnotarized)?\\.(?:exe|dmg|zip)$/u'],
       ['`${update.binaryKeyPrefix}/deepseek-harness-`', '`${update.binaryKeyPrefix}/owndsh-desktop-`'],
     ], '更新发现使用 OwnDsh 制品前缀'],
     ['apps/desktop/scripts/installed-update-distribution.ts', [['`deepseek-harness-${version}-win-x64.exe`', '`owndsh-desktop-${version}-win-x64.exe`']], '安装更新分发使用 OwnDsh 制品名'],
