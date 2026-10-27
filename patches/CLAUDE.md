@@ -5,7 +5,7 @@ apply.mjs: 断言式替换底座，锚点默认恰好出现一次，重复文本
 apply.test.mjs: 共享底座回归验收，验证多补丁标记折叠、旧头部迁移、脚本首行与当前平台解释器执行
 login-gate.mjs: 掐断官方登录入口，needsWelcome 恒为 false 并删除登出与会话过期两处重弹回路
 plugin-seed.mjs: 首次 profile 只播种 owndsh-plugin bundle，把包登记到 dsh 运行时依赖树，并迁移旧 profile 的 OwnDsh 精确版本；避免 rc3 离线直接依赖元数据查询
-branding.mjs: 切换 OwnDsh Desktop 产品名、appId 默认值、外部协议和平台图标，声明 macOS 本地网络用途
+branding.mjs: 切换 OwnDsh Desktop 产品名、appId 默认值与官方 unsigned 预设、外部协议和平台图标，声明 macOS 本地网络用途
 cli-isolation.mjs: 将全局 CLI 命令改为 owndsh，负责启动器内容与名称，并隔离 macOS 收据、Windows 注册表和 PATH 探测
 data-isolation.mjs: 在 main process 启动早期设置独立 DSH_HOME、userData 和 sessionData
 packaging.mjs: 打包配置接缝，策略 origin 未配置时跳过强制更新策略注入

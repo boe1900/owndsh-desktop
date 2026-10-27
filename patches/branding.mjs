@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 官方 Electron 打包配置、桌面壳身份文本与 OwnDsh 图标派生资源
- * [OUTPUT]: 使用 OwnDsh Desktop 名称、协议、appId 默认值、图标和 macOS 本地网络用途声明的官方 checkout
+ * [OUTPUT]: 使用 OwnDsh Desktop 名称、协议、appId 默认值、unsigned 预设、图标和 macOS 本地网络用途声明的官方 checkout
  * [POS]: patches/ 的品牌接缝；不修改官方业务逻辑，资源由仓库内 OwnDsh 图标复制
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -154,6 +154,15 @@ export async function branding(source) {
       output: '官方打包示例使用 OwnDsh Desktop appId',
     })
   }
+
+  await applyPatch(source, {
+    marker: 'OWNDSH-BRANDING',
+    file: 'apps/desktop/scripts/desktop-package-environment.mjs',
+    replacements: [
+      ["    DSH_DESKTOP_APP_ID: 'com.deepseek.harness',", "    DSH_DESKTOP_APP_ID: 'com.owndsh.desktop',"],
+    ],
+    output: '官方 macOS unsigned 预设沿用 OwnDsh appId，保持旧版安装和 updater 身份一致',
+  })
 
   await copyBrandAssets(source)
 }

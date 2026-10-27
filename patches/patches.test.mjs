@@ -58,6 +58,7 @@ try {
   // 官方 rc3 已提供 macOS unsigned 入口；OwnDsh 只复用其路径。
   const packageEnvironment = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-package-environment.mjs'), 'utf8')
   assert.ok(packageEnvironment.includes('localMacOSPackageEnvironment'), 'official macOS unsigned environment missing')
+  assert.ok(packageEnvironment.includes("DSH_DESKTOP_APP_ID: 'com.owndsh.desktop'"), 'macOS unsigned appId must preserve OwnDsh update identity')
   const prepareDsh = readFileSync(join(sandbox, 'apps/desktop/scripts/prepare-dsh.ts'), 'utf8')
   assert.ok(prepareDsh.includes('OWNDSH-PATCH-RUNTIME-RESOLUTION'), 'runtime resolver dependency seam missing')
   assert.ok(prepareDsh.includes(`'owndsh-plugin': ${JSON.stringify(PLUGIN_VERSION)}`), 'runtime dsh dependency missing')
