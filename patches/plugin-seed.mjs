@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 官方 project-manager.ts 的 profile 创建与运行树依赖
- * [OUTPUT]: 首次 profile 播种 owndsh-plugin，升级 OwnDsh 管理的旧副本，且官方运行树携带该插件
+ * [OUTPUT]: 首次 profile 播种 owndsh-plugin bundle，升级 OwnDsh 管理的旧副本，且官方运行树携带该插件
  * [POS]: patches/ 的插件预置；尊重用户卸载/禁用状态，版本由 upstream.json 锁定
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { applyPatch } from './apply.mjs'
 
 /**
- * 预置 owndsh-plugin：首次创建 profile 时播种，并加入官方运行树。
+ * 预置 owndsh-plugin：首次创建 profile 时只播种 bundle 名称，并加入官方运行树。
  * @param source - 临时官方 checkout 根目录
  * @param pluginVersion - 预置的 owndsh-plugin 精确版本
  */
@@ -29,7 +29,6 @@ export async function pluginSeed(source, pluginVersion) {
   const manifestPath = join(projectDir, 'package.json')
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
   if (fresh) {
-    manifest.dependencies['owndsh-plugin'] = ${JSON.stringify(pluginVersion)}
     writeJson(manifestPath, manifest)
     return
   }
