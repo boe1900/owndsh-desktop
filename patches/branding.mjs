@@ -1,6 +1,6 @@
 /**
  * [INPUT]: 官方 Electron 打包配置、桌面壳身份文本与 OwnDsh 图标派生资源
- * [OUTPUT]: 使用 OwnDsh Desktop 名称、协议、appId 默认值、unsigned 预设、图标和 macOS 本地网络用途声明的官方 checkout
+ * [OUTPUT]: 使用 OwnDsh Desktop 名称、协议、appId 默认值、unsigned 稳定签名要求、图标和 macOS 本地网络用途声明的官方 checkout
  * [POS]: patches/ 的品牌接缝；不修改官方业务逻辑，资源由仓库内 OwnDsh 图标复制
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -42,6 +42,23 @@ export async function branding(source) {
         '    artifactName: `owndsh-desktop-\\${version}-\\${os}-\\${arch}${output.suffix}.\\${ext}`,'],
       [`      target: unsigned ? ['dmg'] : ['dmg', 'zip'],`,
         `      target: unsigned ? ['dmg', 'zip'] : ['dmg', 'zip'],`],
+      [`      if (context.electronPlatformName !== 'darwin' || unsigned) return
+      const appPath = join(context.appOutDir, \`\${context.packager.appInfo.productFilename}.app\`)
+      if (update !== undefined) {`,
+        `      if (context.electronPlatformName !== 'darwin') return
+      const appPath = join(context.appOutDir, \`\${context.packager.appInfo.productFilename}.app\`)
+      if (unsigned) {
+        // Keep electron-builder's nested signatures; only the outer requirement must be stable for ShipIt.
+        const requirement = \`=designated => identifier "\${appId}"\`
+        await promisify(execFile)('/usr/bin/codesign', [
+          '--force', '--sign', '-', '--options', 'runtime',
+          '--entitlements', fileURLToPath(new URL('./macos-entitlements.plist', import.meta.url)),
+          '--identifier', appId, '--requirements', requirement, appPath,
+        ])
+        await promisify(execFile)('/usr/bin/codesign', ['--verify', '--deep', '--strict', appPath])
+        return
+      }
+      if (update !== undefined) {`],
       [`      extendInfo: { NSMicrophoneUsageDescription: 'DeepSeek Harness uses your microphone to transcribe speech into message drafts.' },`,
         `      extendInfo: {
         NSMicrophoneUsageDescription: 'OwnDsh Desktop uses your microphone to transcribe speech into message drafts.',

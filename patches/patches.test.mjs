@@ -72,6 +72,10 @@ try {
   assert.ok(builder.includes("protocols: [{ name: 'OwnDsh Desktop', schemes: ['owndsh'] }]"), 'OwnDsh protocol missing')
   assert.ok(builder.includes('NSLocalNetworkUsageDescription:'), 'macOS local network usage description missing')
   assert.ok(builder.includes('output.suffix'), 'official unsigned artifact suffix missing')
+  assert.ok(builder.includes("'--identifier', appId, '--requirements', requirement"), 'stable macOS unsigned requirement missing')
+  assert.ok(builder.includes("await promisify(execFile)('/usr/bin/codesign', [\n          '--force', '--sign', '-', '--options', 'runtime',"), 'stable requirement must only re-sign the outer app')
+  assert.ok(builder.includes("'--entitlements', fileURLToPath(new URL('./macos-entitlements.plist', import.meta.url))"), 'outer ad-hoc signature must preserve official entitlements')
+  assert.ok(builder.includes("['--verify', '--deep', '--strict', appPath]"), 'macOS unsigned signature verification missing')
   assert.ok(builder.includes("target: unsigned ? ['dmg', 'zip'] : ['dmg', 'zip']"), 'unsigned macOS ZIP target missing')
 
   // OWNDSH-GITHUB-UPDATES：unsigned 包携带 OwnDsh GitHub Release 更新源。

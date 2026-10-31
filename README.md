@@ -24,7 +24,7 @@ Windows 首次运行可能显示 SmartScreen 未验证发布者，选择“更�
 
 ## 自动更新
 
-unsigned 包已经接入 OwnDsh 的 GitHub Release。Windows 从 `nightly.yml` 更新，macOS 从同时包含 ARM64 和 Intel ZIP 的 `nightly-mac.yml` 更新；更新源地址是 [Latest Release assets](https://github.com/boe1900/owndsh-desktop/releases/latest/download)。向 `main` 推送代码不触发打包；推送 `v*` 标签时，GitHub Actions 会去掉标签开头的 `v` 作为构建版本，并校验、汇总 feed 文件、安装包和对应 blockmap 后发布到 Release；PR 和手动构建只产生 Actions Artifacts。当前产品版本是 `0.2.1-rc.5`，例如更新构建可以使用标签 `v0.2.1-rc.5`。只上传 `.exe` 或 `.dmg` 不能触发自动更新，Release 也必须是已发布的最新版本。
+unsigned 包已经接入 OwnDsh 的 GitHub Release。Windows 从 `nightly.yml` 更新，macOS 从同时包含 ARM64 和 Intel ZIP 的 `nightly-mac.yml` 更新；更新源地址是 [Latest Release assets](https://github.com/boe1900/owndsh-desktop/releases/latest/download)。向 `main` 推送代码不触发打包；推送 `v*` 标签时，GitHub Actions 会去掉标签开头的 `v` 作为构建版本，并校验、汇总 feed 文件、安装包和对应 blockmap 后发布到 Release；PR 和手动构建只产生 Actions Artifacts。当前产品版本是 `0.2.1-rc.5`，例如更新构建可以使用标签 `v0.2.1-rc.5`。只上传 `.exe` 或 `.dmg` 不能触发自动更新，Release 也必须是已发布的最新版本。macOS unsigned 包在 App 生成阶段写入按 `com.owndsh.desktop` 固定的 designated requirement，后续构建不会因 cdhash 变化而被 ShipIt 拒绝。
 
 发布时只需推送标签：
 

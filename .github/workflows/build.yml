@@ -85,11 +85,15 @@ jobs:
           app="$(find "$root" -maxdepth 3 -type d -name 'OwnDsh Desktop.app' -print -quit)"
           test -n "$app"
           codesign --verify --deep --strict --verbose=2 "$app"
+          requirement="$(codesign -d --requirements - "$app" 2>&1 | sed -n '/^designated/,$p')"
+          test "$requirement" = 'designated => identifier "com.owndsh.desktop"'
           zip="$(find "$root" -maxdepth 1 -type f -name '*.zip' -print -quit)"
           test -n "$zip"
           extracted="$(mktemp -d)"
           ditto -x -k "$zip" "$extracted"
           codesign --verify --deep --strict --verbose=2 "$extracted/OwnDsh Desktop.app"
+          zip_requirement="$(codesign -d --requirements - "$extracted/OwnDsh Desktop.app" 2>&1 | sed -n '/^designated/,$p')"
+          test "$zip_requirement" = 'designated => identifier "com.owndsh.desktop"'
           rm -rf "$extracted"
           mkdir -p artifacts
           find "$root" -maxdepth 1 -type f \( -name '*.dmg' -o -name '*.zip' -o -name '*.blockmap' -o -name '*.yml' \) -exec cp -v {} artifacts/ \;
