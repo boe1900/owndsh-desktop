@@ -55,7 +55,7 @@ try {
   const policyEnv = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-policy-environment.mjs'), 'utf8')
   assert.ok(policyEnv.includes("if (configuredOrigin === '') return undefined"), 'policy bypass missing')
 
-  // 官方 rc3 已提供 macOS unsigned 入口；OwnDsh 只复用其路径。
+  // 官方 rc.5 已提供 macOS unsigned 入口；OwnDsh 只复用其路径。
   const packageEnvironment = readFileSync(join(sandbox, 'apps/desktop/scripts/desktop-package-environment.mjs'), 'utf8')
   assert.ok(packageEnvironment.includes('localMacOSPackageEnvironment'), 'official macOS unsigned environment missing')
   assert.ok(packageEnvironment.includes("DSH_DESKTOP_APP_ID: 'com.owndsh.desktop'"), 'macOS unsigned appId must preserve OwnDsh update identity')
@@ -92,7 +92,7 @@ try {
   assert.ok(mainSource.includes("setAsDefaultProtocolClient('owndsh')"), 'OwnDsh external protocol missing')
   assert.ok(mainSource.includes("url === 'owndsh://open'"), 'OwnDsh protocol wake-up missing')
 
-  // rc3 官方 Host 已使用回环地址和操作系统分配的端口。
+  // rc.5 官方 Host 已使用回环地址和操作系统分配的端口。
   const desktopHost = readFileSync(join(sandbox, 'apps/desktop-host/src/index.ts'), 'utf8')
   assert.ok(desktopHost.includes("args: ['--no-open', '--host', '127.0.0.1', '--port', '0']"), 'official Host must use isolated loopback port')
 
