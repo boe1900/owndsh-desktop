@@ -59,11 +59,9 @@ export async function branding(source) {
         return
       }
       if (update !== undefined) {`],
-      [`      extendInfo: { NSMicrophoneUsageDescription: 'DeepSeek Harness uses your microphone to transcribe speech into message drafts.' },`,
-        `      extendInfo: {
-        NSMicrophoneUsageDescription: 'OwnDsh Desktop uses your microphone to transcribe speech into message drafts.',
-        NSLocalNetworkUsageDescription: 'OwnDsh Desktop needs access to your local network to connect to the enterprise server.',
-      },`],
+      [`        NSMicrophoneUsageDescription: 'DeepSeek Harness uses your microphone to transcribe speech into message drafts.',`,
+        `        NSMicrophoneUsageDescription: 'OwnDsh Desktop uses your microphone to transcribe speech into message drafts.',
+        NSLocalNetworkUsageDescription: 'OwnDsh Desktop needs access to your local network to connect to the enterprise server.',`],
     ],
     output: '官方 builder 使用 OwnDsh Desktop 产品名、协议、制品前缀和 macOS 本地网络用途声明',
   })
@@ -74,11 +72,9 @@ export async function branding(source) {
     replacements: [
       [`readonly protocols: readonly [{ readonly name: 'DeepSeek Harness'; readonly schemes: readonly ['dsh'] }]`,
         `readonly protocols: readonly [{ readonly name: 'OwnDsh Desktop'; readonly schemes: readonly ['owndsh'] }]`],
-      [`readonly extendInfo: { readonly NSMicrophoneUsageDescription: string }`,
-        `readonly extendInfo: {
-      readonly NSMicrophoneUsageDescription: string
-      readonly NSLocalNetworkUsageDescription: string
-    }`],
+      [`      readonly NSMicrophoneUsageDescription: string`,
+        `      readonly NSMicrophoneUsageDescription: string
+      readonly NSLocalNetworkUsageDescription: string`],
     ],
     output: '官方 builder 类型声明与 OwnDsh 产品身份一致',
   })
@@ -101,15 +97,15 @@ export async function branding(source) {
     file: 'apps/desktop/src/locale.ts',
     replacements: [
       [`  aboutMenu: 'About DeepSeek Harness',`, `  aboutMenu: 'About OwnDsh Desktop',`],
-      [`  aboutProduct: 'DeepSeek Harness',`, `  aboutProduct: 'OwnDsh Desktop',`, 2],
+      [`  aboutProduct: 'DeepSeek Harness',`, `  aboutProduct: 'OwnDsh Desktop',`, 8],
       [`  hideApplication: 'Hide DeepSeek Harness',`, `  hideApplication: 'Hide OwnDsh Desktop',`],
       [`  quitApplication: 'Quit DeepSeek Harness',`, `  quitApplication: 'Quit OwnDsh Desktop',`],
       [`  openApplication: 'Open DeepSeek Harness',`, `  openApplication: 'Open OwnDsh Desktop',`],
       [`  quitTitle: 'Quit DeepSeek Harness?',`, `  quitTitle: 'Quit OwnDsh Desktop?',`],
       [`  startupFailed: 'DeepSeek Harness is unavailable',`, `  startupFailed: 'OwnDsh Desktop is unavailable',`],
-      [`  welcomeTitle: 'DeepSeek Harness',`, `  welcomeTitle: 'OwnDsh Desktop',`, 2],
-      [`  welcomeBrand: 'DeepSeek Harness',`, `  welcomeBrand: 'OwnDsh Desktop',`, 2],
-      [`  welcomeTaglineBrand: 'DeepSeek Harness',`, `  welcomeTaglineBrand: 'OwnDsh Desktop',`, 2],
+      [`  welcomeTitle: 'DeepSeek Harness',`, `  welcomeTitle: 'OwnDsh Desktop',`, 8],
+      [`  welcomeBrand: 'DeepSeek Harness',`, `  welcomeBrand: 'OwnDsh Desktop',`, 8],
+      [`  welcomeTaglineBrand: 'DeepSeek Harness',`, `  welcomeTaglineBrand: 'OwnDsh Desktop',`, 8],
       [`  updateTitle: 'DeepSeek Harness Update',`, `  updateTitle: 'OwnDsh Desktop Update',`],
       [`  aboutMenu: '关于 DeepSeek Harness',`, `  aboutMenu: '关于 OwnDsh Desktop',`],
       [`  hideApplication: '隐藏 DeepSeek Harness',`, `  hideApplication: '隐藏 OwnDsh Desktop',`],
@@ -118,6 +114,47 @@ export async function branding(source) {
       [`  quitTitle: '退出 DeepSeek Harness？',`, `  quitTitle: '退出 OwnDsh Desktop？',`],
       [`  startupFailed: 'DeepSeek Harness 无法使用',`, `  startupFailed: 'OwnDsh Desktop 无法使用',`],
       [`  updateTitle: 'DeepSeek Harness 更新',`, `  updateTitle: 'OwnDsh Desktop 更新',`],
+      [`  aboutMenu: 'DeepSeek Harness について',`, `  aboutMenu: 'OwnDsh Desktop について',`],
+      [`  hideApplication: 'DeepSeek Harness を隠す',`, `  hideApplication: 'OwnDsh Desktop を隠す',`],
+      [`  quitApplication: 'DeepSeek Harness を終了',`, `  quitApplication: 'OwnDsh Desktop を終了',`],
+      [`  openApplication: 'DeepSeek Harness を開く',`, `  openApplication: 'OwnDsh Desktop を開く',`],
+      [`  quitTitle: 'DeepSeek Harness を終了しますか？',`, `  quitTitle: 'OwnDsh Desktop を終了しますか？',`],
+      [`  startupFailed: 'DeepSeek Harness を利用できません',`, `  startupFailed: 'OwnDsh Desktop を利用できません',`],
+      [`  updateTitle: 'DeepSeek Harness アップデート',`, `  updateTitle: 'OwnDsh Desktop アップデート',`],
+      [`  aboutMenu: 'Acerca de DeepSeek Harness',`, `  aboutMenu: 'Acerca de OwnDsh Desktop',`],
+      [`  hideApplication: 'Ocultar DeepSeek Harness',`, `  hideApplication: 'Ocultar OwnDsh Desktop',`, 2],
+      [`  quitApplication: 'Salir de DeepSeek Harness',`, `  quitApplication: 'Salir de OwnDsh Desktop',`],
+      [`  openApplication: 'Abrir DeepSeek Harness',`, `  openApplication: 'Abrir OwnDsh Desktop',`],
+      [`  quitTitle: '¿Salir de DeepSeek Harness?',`, `  quitTitle: '¿Salir de OwnDsh Desktop?',`],
+      [`  startupFailed: 'DeepSeek Harness no está disponible',`, `  startupFailed: 'OwnDsh Desktop no está disponible',`],
+      [`  updateTitle: 'Actualización DeepSeek Harness',`, `  updateTitle: 'Actualización OwnDsh Desktop',`],
+      [`  aboutMenu: 'À propos de DeepSeek Harness',`, `  aboutMenu: 'À propos de OwnDsh Desktop',`],
+      [`  hideApplication: 'Masquer DeepSeek Harness',`, `  hideApplication: 'Masquer OwnDsh Desktop',`],
+      [`  quitApplication: 'Quitter DeepSeek Harness',`, `  quitApplication: 'Quitter OwnDsh Desktop',`],
+      [`  openApplication: 'Ouvrir DeepSeek Harness',`, `  openApplication: 'Ouvrir OwnDsh Desktop',`],
+      [`  quitTitle: 'Quitter DeepSeek Harness ?',`, `  quitTitle: 'Quitter OwnDsh Desktop ?',`],
+      [`  startupFailed: "DeepSeek Harness n'est pas disponible",`, `  startupFailed: "OwnDsh Desktop n'est pas disponible",`],
+      [`  updateTitle: 'Mise à jour DeepSeek Harness',`, `  updateTitle: 'Mise à jour OwnDsh Desktop',`],
+      [`  aboutMenu: 'Über DeepSeek Harness',`, `  aboutMenu: 'Über OwnDsh Desktop',`],
+      [`  hideApplication: 'DeepSeek Harness ausblenden',`, `  hideApplication: 'OwnDsh Desktop ausblenden',`],
+      [`  quitApplication: 'DeepSeek Harness beenden',`, `  quitApplication: 'OwnDsh Desktop beenden',`],
+      [`  openApplication: 'DeepSeek Harness öffnen',`, `  openApplication: 'OwnDsh Desktop öffnen',`],
+      [`  quitTitle: 'DeepSeek Harness beenden?',`, `  quitTitle: 'OwnDsh Desktop beenden?',`],
+      [`  startupFailed: 'DeepSeek Harness ist nicht verfügbar',`, `  startupFailed: 'OwnDsh Desktop ist nicht verfügbar',`],
+      [`  updateTitle: 'DeepSeek Harness-Update',`, `  updateTitle: 'OwnDsh Desktop-Update',`],
+      [`  aboutMenu: 'О DeepSeek Harness',`, `  aboutMenu: 'О OwnDsh Desktop',`],
+      [`  hideApplication: 'Скрыть DeepSeek Harness',`, `  hideApplication: 'Скрыть OwnDsh Desktop',`],
+      [`  quitApplication: 'Выйти из DeepSeek Harness',`, `  quitApplication: 'Выйти из OwnDsh Desktop',`],
+      [`  openApplication: 'Открыть DeepSeek Harness',`, `  openApplication: 'Открыть OwnDsh Desktop',`],
+      [`  quitTitle: 'Выйти из DeepSeek Harness?',`, `  quitTitle: 'Выйти из OwnDsh Desktop?',`],
+      [`  startupFailed: 'DeepSeek Harness недоступен.',`, `  startupFailed: 'OwnDsh Desktop недоступен.',`],
+      [`  updateTitle: 'DeepSeek Harness Обновление',`, `  updateTitle: 'OwnDsh Desktop Обновление',`],
+      [`  aboutMenu: 'Sobre DeepSeek Harness',`, `  aboutMenu: 'Sobre OwnDsh Desktop',`],
+      [`  quitApplication: 'Sair de DeepSeek Harness',`, `  quitApplication: 'Sair de OwnDsh Desktop',`],
+      [`  openApplication: 'Abra DeepSeek Harness',`, `  openApplication: 'Abra OwnDsh Desktop',`],
+      [`  quitTitle: 'Sair de DeepSeek Harness?',`, `  quitTitle: 'Sair de OwnDsh Desktop?',`],
+      [`  startupFailed: 'DeepSeek Harness não está disponível',`, `  startupFailed: 'OwnDsh Desktop não está disponível',`],
+      [`  updateTitle: 'DeepSeek Harness Atualização',`, `  updateTitle: 'OwnDsh Desktop Atualização',`],
     ],
     output: '桌面菜单、About、欢迎和更新文本使用 OwnDsh Desktop',
   })
@@ -140,7 +177,7 @@ export async function branding(source) {
       ["'DeepSeek Harness.exe'", "'OwnDsh Desktop.exe'"],
       ["'MacOS', 'DeepSeek Harness'", "'MacOS', 'OwnDsh Desktop'"],
     ], '打包冒烟脚本定位 OwnDsh Desktop 应用'],
-    ['apps/desktop/scripts/package-target.ts', [["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'"]], 'macOS 目标打包定位 OwnDsh Desktop 应用并复用官方 unsigned 路径'],
+    ['apps/desktop/scripts/package-target.ts', [["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'", 2]], 'macOS 目标打包定位 OwnDsh Desktop 应用并复用官方 unsigned 路径'],
     ['apps/desktop/scripts/package-macos.ts', [
       ["'DeepSeek Harness.app'", "'OwnDsh Desktop.app'"],
       ['`deepseek-harness-${version}-mac-${arch}`', '`owndsh-desktop-${version}-mac-${arch}`'],
@@ -153,14 +190,9 @@ export async function branding(source) {
     ['apps/desktop/scripts/installed-update-distribution.ts', [['`deepseek-harness-${version}-win-x64.exe`', '`owndsh-desktop-${version}-win-x64.exe`']], '安装更新分发使用 OwnDsh 制品名'],
     ['apps/desktop/scripts/macos-notarization-proxy.ts', [["'com.deepseek.harness'", "'com.owndsh.desktop'"]], 'macOS 公证代理缓存与官方身份隔离'],
     ['apps/desktop/installer/extract-report.h', [['L"DeepSeek Harness installer: extraction failed\\r\\n"', 'L"OwnDsh Desktop installer: extraction failed\\r\\n"']], '安装器错误文本使用 OwnDsh Desktop'],
-    ['apps/desktop/installer/strings.nsh', [
-      ['"DeepSeek Harness could not be launched.', '"OwnDsh Desktop could not be launched.'],
-      ['"无法启动 DeepSeek Harness。', '"无法启动 OwnDsh Desktop。'],
-      ['"DeepSeek Harness is running.', '"OwnDsh Desktop is running.'],
-      ['"DeepSeek Harness 正在运行', '"OwnDsh Desktop 正在运行'],
-      ['"Choose an empty folder or the registered DeepSeek Harness installation folder.', '"Choose an empty folder or the registered OwnDsh Desktop installation folder.'],
-      ['"请选择空文件夹，或 DeepSeek Harness 原来的安装目录。', '"请选择空文件夹，或 OwnDsh Desktop 原来的安装目录。'],
-    ], '安装器显示 OwnDsh Desktop 文本'],
+    ['apps/desktop/scripts/installer-locales.mjs', [
+      ["        result[key] = text", "        result[key] = text.replaceAll('DeepSeek Harness', 'OwnDsh Desktop')"],
+    ], '八语言安装器资源在官方校验后统一替换产品名'],
   ]) {
     await applyPatch(source, { marker: 'OWNDSH-BRANDING', file, replacements, output })
   }
@@ -169,7 +201,7 @@ export async function branding(source) {
     await applyPatch(source, {
       marker: 'OWNDSH-BRANDING',
       file: `apps/desktop/${file}`,
-      replacements: [[`DSH_DESKTOP_APP_ID=com.deepseek.harness`, `DSH_DESKTOP_APP_ID=com.owndsh.desktop`]],
+      replacements: [[`DSH_DESKTOP_APP_ID=com.deepseek.dsh`, `DSH_DESKTOP_APP_ID=com.owndsh.desktop`]],
       output: '官方打包示例使用 OwnDsh Desktop appId',
     })
   }

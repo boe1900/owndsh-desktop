@@ -8,6 +8,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, cpSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { applyPatches } from './index.mjs'
 import { checkoutOfficial } from '../build/checkout.mjs'
 
@@ -82,16 +83,29 @@ try {
   assert.ok(builder.includes("https://github.com/boe1900/owndsh-desktop/releases/latest/download"), 'OwnDsh GitHub update source missing')
   assert.ok(builder.includes("publish: update === undefined ? null : [{ provider: 'generic', url: update.publicUrl, channel: update.channel }]"), 'GitHub update feed metadata missing')
 
+  assert.ok(builder.includes("CFBundleLocalizations: ['en', 'zh_CN', 'ja', 'es', 'fr', 'de', 'ru', 'pt']"), 'official macOS language declarations must remain intact')
+  const { readInstallerLocales } = await import(pathToFileURL(join(sandbox, 'apps/desktop/scripts/installer-locales.mjs')).href)
+  const installerLocales = readInstallerLocales()
+  assert.deepEqual(installerLocales.map(locale => locale.id).sort(), ['de_DE', 'en_US', 'es_ES', 'fr_FR', 'ja_JP', 'pt_BR', 'ru_RU', 'zh_CN'])
+  for (const locale of installerLocales) {
+    for (const key of ['INSTALLER_LAUNCH_FAILED', 'INSTALLER_RUNNING', 'INSTALLER_PATH_OWNERSHIP']) {
+      assert.ok(locale.strings[key].includes('OwnDsh Desktop'), `${locale.id} ${key} must use OwnDsh branding`)
+    }
+    assert.ok(!JSON.stringify(locale).includes('DeepSeek Harness'), `${locale.id} installer must not retain official branding`)
+  }
+
   // OWNDSH-ACCOUNT-MENU：更多菜单不再暴露官方登录和反馈入口。
   const accountMenu = readFileSync(join(sandbox, 'packages/client/ui-settings-account/src/client/AccountMenu.tsx'), 'utf8')
   assert.ok(accountMenu.includes("id: 'settings'"), 'settings menu item was removed')
   assert.ok(accountMenu.includes("id: 'signout'"), 'signed-in sign-out menu item was removed')
   assert.ok(!accountMenu.includes("id: 'contact'"), 'official feedback menu item still present')
   assert.ok(!accountMenu.includes("id: 'signin'"), 'official sign-in menu item still present')
+  assert.ok(accountMenu.includes('refreshAccount, renderSlot,'), 'official notification slot injection must remain intact')
   assert.ok(!accountMenu.includes('SignInDialog'), 'official sign-in dialog still mounted from account menu')
 
   const mainSource = readFileSync(join(sandbox, 'apps/desktop/src/main.ts'), 'utf8')
   assert.ok(mainSource.includes("process.env.DSH_HOME ??= join(homedir(), '.owndsh')"), 'OwnDsh home default missing')
+  assert.ok(mainSource.includes("app.commandLine.getSwitchValue('user-data-dir') || join(app.getPath('appData'), 'OwnDsh Desktop')"), 'explicit Electron user data isolation must remain available')
   assert.ok(mainSource.includes("app.setPath('userData', ownDshUserData)"), 'OwnDsh userData isolation missing')
   assert.ok(mainSource.includes("setAsDefaultProtocolClient('owndsh')"), 'OwnDsh external protocol missing')
   assert.ok(mainSource.includes("url === 'owndsh://open'"), 'OwnDsh protocol wake-up missing')
@@ -103,6 +117,13 @@ try {
   const locale = readFileSync(join(sandbox, 'apps/desktop/src/locale.ts'), 'utf8')
   assert.ok(locale.includes("aboutProduct: 'OwnDsh Desktop'"), 'OwnDsh English locale missing')
   assert.ok(locale.includes("aboutMenu: '关于 OwnDsh Desktop'"), 'OwnDsh Chinese locale missing')
+  for (const language of ['en', 'zh', 'ja', 'es', 'fr', 'de', 'ru', 'pt']) {
+    const block = locale.split(`export const ${language} = {`)[1]?.split('\n}')[0]
+    assert.ok(block, `${language} desktop locale missing`)
+    for (const key of ['aboutMenu', 'aboutProduct', 'welcomeTitle', 'welcomeBrand', 'welcomeTaglineBrand', 'updateTitle']) {
+      assert.ok(new RegExp(`${key}: ['\"](?=[^\n]*OwnDsh Desktop)`).test(block), `${language} ${key} must use OwnDsh branding`)
+    }
+  }
 
   for (const file of ['apps/desktop/src/main.ts', 'apps/desktop/src/locale.ts']) {
     const source = readFileSync(join(sandbox, file), 'utf8')
