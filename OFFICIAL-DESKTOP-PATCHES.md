@@ -14,6 +14,8 @@ rc.5 已提供 macOS ARM64/x64 的官方 `package:mac:*:unsigned` 入口，OwnDs
 
 数据隔离补丁尊重 Electron 显式 `--user-data-dir`，默认仍为 OwnDsh 独立目录。这样安装包验收可使用隔离数据而不访问用户现有 Chromium 状态。
 
+左上角侧栏复用官方 `ui-brand-official` 的 `OfficialBrandMark` 和 `OfficialBrandName`。unsigned 流水线仍使用真实的 `local` 构建记录，补丁仅删除这两个 slot 注册前的 profile 限制，让侧栏与 DSH 正式版相同，不再使用“DSH 本地构建”和带 `dirty` 的版本回退显示。窗口标题、安装器、图标、菜单、登录、数据目录、签名和更新源继续使用现有 OwnDsh 配置。
+
 ## 新增补丁
 
 1. 在 `patches/` 建一个文件，用 `apply.mjs` 的 `applyPatch` 施加（锚点默认恰好一次，重复文本显式声明命中次数）。
@@ -35,6 +37,7 @@ rc.5 已提供 macOS ARM64/x64 的官方 `package:mac:*:unsigned` 入口，OwnDs
 | `OWNDSH-PATCH-RUNTIME-RESOLUTION` | `apps/desktop/scripts/prepare-dsh.ts` | 将打包后的 `owndsh-plugin` 登记为 `@deepseek-ai/dsh` 的依赖，使 profile resolver 能从安装树发现它。 | 检查 runtime materialize 后仍从 `@deepseek-ai/dsh/package.json` 建立安装解析树。 |
 | `OWNDSH-BRANDING` | `apps/desktop/scripts/electron-builder-config.mjs`、`apps/desktop/scripts/desktop-package-environment.mjs`、`apps/desktop/src/main.ts`、`apps/desktop/src/locale.ts`、`apps/desktop/scripts/development-app.ts`、`apps/desktop/scripts/*`、`apps/desktop/installer/*`、`apps/desktop/scripts/installer-locales.mjs` | 使用 OwnDsh Desktop 产品名、`com.owndsh.desktop` 默认 appId、官方 macOS unsigned 预设的稳定 appId、unsigned 产物顶层按 appId 固定的 designated requirement、`owndsh://` 协议、制品前缀、安装器文本、可见桌面文本和 macOS 本地网络用途声明。 | 检查官方 builder、unsigned 预设、顶层稳定 requirement、About、locale、开发应用、发行脚本和 `mac.extendInfo` 仍保留这些身份/权限接缝；协议、appId 或制品命名变更时同步登录/唤醒和更新发现入口。 |
 | `OWNDSH-BRANDING` | `apps/desktop/resources/*` | 复制 OwnDsh 1104/About、Windows、macOS 和多尺寸托盘图标；平台 PNG 保持官方 1024×1024 规格与圆角内缩。 | 检查官方资源文件名和 builder 引用未变化；修改 `assets/icon.png` 后重生成全部派生资源。 |
+| `OWNDSH-BRANDING` | `packages/client/ui-brand-official/src/client/index.ts` | 让左上角侧栏在 `local` 构建中也注册官方 `OfficialBrandMark` 和 `OfficialBrandName`，复用 DSH 正式版显示。 | 检查官方两个侧栏 slot 的注册入口和组件仍只负责显示；不得通过切换全局 build profile 或改写构建记录隐藏真实签名与源码状态。 |
 | `OWNDSH-CLI-ISOLATION` | `apps/desktop/cli/*`、`apps/desktop/scripts/prepare-cli.ts`、`apps/desktop/src/command-*`、`apps/desktop/scripts/command-path.ps1`、`apps/desktop/src/locale.ts` | 将 OwnDsh 的全局命令注册为 `owndsh`，同时负责 CLI 启动器品牌、macOS 收据、Windows 注册表键、互斥键和 PATH 探测隔离；底层 CLI 仍复用官方实现。 | 检查官方命令入口、CLI 启动器、macOS 固定目标、Windows `owndsh.cmd` 检测和命令管理 UI 的接缝；若官方命令管理重构，重新确认两端安装不会争抢状态。 |
 | `OWNDSH-DATA-ISOLATION` | `apps/desktop/src/main.ts` | 在日志、Host 和 profile 初始化前默认设置 `DSH_HOME=~/.owndsh`，并隔离 Electron `userData`/`sessionData`；显式环境变量与 `--user-data-dir` 仍优先。 | 检查 `app.setAppLogsPath()` 仍位于数据路径设置之后，且官方所有 Host/credentials/cache 路径继续从 `DSH_HOME` 派生。 |
 | `OWNDSH-PACKAGING` | `apps/desktop/scripts/desktop-policy-environment.mjs` | 官方打包强制要求强制更新策略 origin；社区包没有官方策略服务，配假 origin 会把页面来源校验指向不存在的域。origin 未配置时返回 undefined，官方 builder 的 beforePack 本就有 `if (policy === undefined) return` 分支，自然跳过策略注入。 | 检查官方 builder 仍保留 policy 为 undefined 时的跳过分支。 |

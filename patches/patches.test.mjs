@@ -1,6 +1,6 @@
 /**
  * [INPUT]: patches/ 下全部补丁与一份临时官方 checkout
- * [OUTPUT]: 全部补丁锚点命中、登录链路被掐断且 CLI/配置头部语法正确的通过证据
+ * [OUTPUT]: 全部补丁锚点命中、DSH 正式侧栏复用、登录链路和发行隔离边界保留的通过证据
  * [POS]: patches/ 的唯一验收入口；失败立即阻断构建
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -25,8 +25,10 @@ assert.ok(existsSync(join(SOURCE, 'apps/desktop/src/main.ts')), 'official checko
 const sandbox = mkdtempSync(join(tmpdir(), 'owndsh-patch-test-'))
 cpSync(join(SOURCE, 'apps'), join(sandbox, 'apps'), { recursive: true })
 mkdirSync(join(sandbox, 'packages', 'client'), { recursive: true })
-cpSync(join(SOURCE, 'packages', 'client', 'ui-settings-account'),
-  join(sandbox, 'packages', 'client', 'ui-settings-account'), { recursive: true })
+for (const name of ['ui-settings-account', 'ui-brand-official']) {
+  cpSync(join(SOURCE, 'packages', 'client', name),
+    join(sandbox, 'packages', 'client', name), { recursive: true })
+}
 
 try {
   await applyPatches(sandbox, PLUGIN_VERSION)

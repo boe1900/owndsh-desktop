@@ -1,7 +1,7 @@
 /**
- * [INPUT]: 官方 Electron 打包配置、桌面壳身份文本与 OwnDsh 图标派生资源
- * [OUTPUT]: 使用 OwnDsh Desktop 名称、协议、appId 默认值、unsigned 稳定签名要求、图标和 macOS 本地网络用途声明的官方 checkout
- * [POS]: patches/ 的品牌接缝；不修改官方业务逻辑，资源由仓库内 OwnDsh 图标复制
+ * [INPUT]: 官方 Electron 打包配置、桌面壳身份文本、侧栏品牌 slot 与 OwnDsh 图标派生资源
+ * [OUTPUT]: 使用 OwnDsh 发行身份和平台资源、左上角保留 DSH 正式侧栏品牌的官方 checkout
+ * [POS]: patches/ 的品牌接缝；侧栏显示与 local 构建身份分离，不修改官方业务逻辑
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { copyFile } from 'node:fs/promises'
@@ -31,6 +31,13 @@ async function copyBrandAssets(source) {
  * @param source - 临时官方 checkout 根目录
  */
 export async function branding(source) {
+  await applyPatch(source, {
+    marker: 'OWNDSH-BRANDING',
+    file: 'packages/client/ui-brand-official/src/client/index.ts',
+    replacements: [["  if (process.env.DSH_CLIENT_BUILD_PROFILE !== 'official') return\n", '']],
+    output: '左上角复用 DSH 正式侧栏图标和名称，保留真实构建元数据与 OwnDsh 发行身份',
+  })
+
   await applyPatch(source, {
     marker: 'OWNDSH-BRANDING',
     file: 'apps/desktop/scripts/electron-builder-config.mjs',

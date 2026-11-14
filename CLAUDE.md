@@ -14,7 +14,7 @@ upstream.json - 官方 deepseek-harness 仓库、tag、不可变 commit 与预�
 patches/apply.mjs - 断言式替换底座；锚点默认必须命中一次，重复文本显式声明次数，按目标语言生成单个 L3 头部并保留 shebang/@echo off，官方升级改动了立即失败
 patches/login-gate.mjs - 掐断官方登录入口（OWNDSH-PATCH-LOGIN-GATE）
 patches/plugin-seed.mjs - 预置 owndsh-plugin（PROFILE-SEED + RUNTIME-DEPENDENCY）
-patches/branding.mjs - OwnDsh Desktop 名称、appId 默认值、unsigned 稳定签名要求、协议、平台图标、八语言菜单/安装器与 macOS 本地网络用途声明
+patches/branding.mjs - OwnDsh Desktop 名称、appId 默认值、unsigned 稳定签名要求、协议、平台图标、八语言菜单/安装器与 macOS 本地网络用途声明；左上角复用 DSH 正式侧栏品牌，保留真实构建元数据
 patches/cli-isolation.mjs - 独立 owndsh CLI 命令及命令所有权元数据
 patches/data-isolation.mjs - 独立 DSH_HOME、Electron userData 和 sessionData
 patches/packaging.mjs - 打包配置接缝（OWNDSH-PACKAGING）
