@@ -10,7 +10,7 @@ rc.5 已提供 macOS ARM64/x64 的官方 `package:mac:*:unsigned` 入口，OwnDs
 
 ## rc.5 升级接缝
 
-当前目标为 `dsh-v0.2.2-rc.5`，commit `9c2670d3bce5275e0d1610272958121af87787bb`，预置 `owndsh-plugin@0.1.0-beta.22`。rc.3 至 rc.5 的 Desktop、desktop-host、侧栏品牌和账号菜单仅修改 package 版本，现有补丁保留；发布仍需通过更新后精确锁的接缝测试和三平台打包。
+当前目标为 `dsh-v0.2.2-rc.5`，commit `9c2670d3bce5275e0d1610272958121af87787bb`，预置 `owndsh-plugin@0.1.0-beta.22`。rc.3 至 rc.5 的 Desktop、desktop-host、侧栏品牌和账号菜单仅修改 package 版本，现有补丁保留；更新后精确锁的本机接缝测试通过，Windows x64、macOS ARM64/x64 的 GitHub 构建与正式 Release 全部成功。正式 ARM64 ZIP 的 DSH/插件版本、随包插件内容、deep/strict 签名、真实企业登录、Atria-Dawn 和重启恢复通过；双架构 macOS 与 Windows 更新 feed 的实际大小和 SHA-512 通过，latest/download 返回对应 feed。本轮未复验旧版原地更新、Windows/Intel 交互或 NAS。验收记录见 [OwnDsh rc.5 报告](https://github.com/boe1900/owndsh/blob/main/docs/dsh-022-rc5-compatibility-20261119.md)。
 
 ## rc.3 升级接缝
 
