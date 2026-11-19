@@ -8,6 +8,10 @@
 
 rc.5 已提供 macOS ARM64/x64 的官方 `package:mac:*:unsigned` 入口，OwnDsh 直接复用；正式打包调用官方 `build:official`，其中 Client `tsc` 已覆盖账号菜单。接缝测试不替代类型检查。
 
+## rc.5 升级接缝
+
+当前目标为 `dsh-v0.2.2-rc.5`，commit `9c2670d3bce5275e0d1610272958121af87787bb`，预置 `owndsh-plugin@0.1.0-beta.22`。rc.3 至 rc.5 的 Desktop、desktop-host、侧栏品牌和账号菜单仅修改 package 版本，现有补丁保留；发布仍需通过更新后精确锁的接缝测试和三平台打包。
+
 ## rc.3 升级接缝
 
 目标锁为 `dsh-v0.2.2-rc.3`、commit `38a6a5c965aa99ab525161efb7cc5cf1fe62fced`。官方增加八语言 `CFBundleLocalizations` 和桌面菜单，品牌补丁保留本地化并替换全部八语言产品名。Windows 安装器文案改由 `installer-locales.mjs` 从 JSON 生成，补丁迁移到官方解析器，保留语言、格式占位符和键校验。macOS 打包新增第二条 App 路径，仍逐项断言。账号菜单由奖励通知字段改为 `renderSlot`，OwnDsh 保留官方通知注入。example appId 变成 `com.deepseek.dsh`，OwnDsh 继续固定自己的 `com.owndsh.desktop`。
@@ -50,7 +54,7 @@ rc.5 已提供 macOS ARM64/x64 的官方 `package:mac:*:unsigned` 入口，OwnDs
 
 ## GitHub Release 更新文件
 
-`latest/download` 只按文件名转发 GitHub 最新 Release 的资产。`.github/workflows/build.yml` 在推送 `v*` 标签时构建三组安装包并自动下载 Artifacts，把去掉 `v` 的标签作为构建版本，创建或更新对应 Release；main push 不构建，PR/手动构建只上传 Artifacts，不发布 Release。标签必须是官方产品版本允许的构建版本，例如当前产品 `0.2.2-rc.3` 使用标签 `v0.2.2-rc.3`；官方产品版本升级后再使用对应的新版本。发布每个平台的新版本时，必须保留官方生成的文件名：Windows 为 `nightly.yml`、`*.exe`、`*.exe.blockmap`；macOS 为 `nightly-mac.yml`、每个架构的 `*.zip`、`*.zip.blockmap`，`.dmg` 只用于首次安装。Release 必须是已发布的最新版本，不能是 Draft；版本号也必须递增，否则 electron-updater 会认为没有新版本。
+`latest/download` 只按文件名转发 GitHub 最新 Release 的资产。`.github/workflows/build.yml` 在推送 `v*` 标签时构建三组安装包并自动下载 Artifacts，把去掉 `v` 的标签作为构建版本，创建或更新对应 Release；main push 不构建，PR/手动构建只上传 Artifacts，不发布 Release。标签必须是官方产品版本允许的构建版本，例如当前产品 `0.2.2-rc.5` 使用标签 `v0.2.2-rc.5`；官方产品版本升级后再使用对应的新版本。发布每个平台的新版本时，必须保留官方生成的文件名：Windows 为 `nightly.yml`、`*.exe`、`*.exe.blockmap`；macOS 为 `nightly-mac.yml`、每个架构的 `*.zip`、`*.zip.blockmap`，`.dmg` 只用于首次安装。Release 必须是已发布的最新版本，不能是 Draft；版本号也必须递增，否则 electron-updater 会认为没有新版本。
 
 release job 必须保留各平台 Artifact 的独立目录，禁止先用 `merge-multiple: true` 展平；两个 macOS 任务产生同名 feed，会静默覆盖。`build/prepare-release.mjs` 按发行标签检查 Windows 安装包、ARM64/x64 的 DMG/ZIP 以及全部 blockmap，缺失或版本不符时停止发布；Windows feed 保留原件，macOS feed 按两个实际 ZIP 的大小和 SHA-512 重建。`nightly-mac.yml` 的 `files` 同时包含 ARM64/x64，electron-updater 6.8.9 根据文件名选择正确架构；JSON 序列化是有效 YAML，可由其标准解析器读取。
 
