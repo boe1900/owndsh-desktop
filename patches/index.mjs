@@ -1,7 +1,7 @@
 /**
  * [INPUT]: patches/ 下全部补丁与 upstream.json 锁定的插件版本
  * [OUTPUT]: 依次施加全部发行补丁的官方 checkout
- * [POS]: patches/ 的聚合入口；build/build.mjs 的唯一调用对象，macOS unsigned 接缝必须先于品牌接缝，新增补丁在此登记
+ * [POS]: patches/ 的聚合入口；build/build.mjs 的唯一调用对象，只编排补丁顺序，远端 Web 启动由专用接缝收敛
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 import { loginGate } from './login-gate.mjs'
@@ -12,6 +12,7 @@ import { cliIsolation } from './cli-isolation.mjs'
 import { dataIsolation } from './data-isolation.mjs'
 import { githubUpdates } from './github-updates.mjs'
 import { accountMenu } from './account-menu.mjs'
+import { remoteWorkspace } from './remote-workspace.mjs'
 
 /**
  * 施加全部 OwnDsh 发行补丁。
@@ -27,4 +28,5 @@ export async function applyPatches(source, pluginVersion) {
   await packaging(source)
   await githubUpdates(source)
   await accountMenu(source)
+  await remoteWorkspace(source)
 }

@@ -20,9 +20,11 @@ patches/data-isolation.mjs - 独立 DSH_HOME、Electron userData 和 sessionData
 patches/packaging.mjs - 打包配置接缝（OWNDSH-PACKAGING）
 patches/github-updates.mjs - unsigned 包接入 OwnDsh GitHub Release nightly 更新源，保留签名发行路径
 patches/account-menu.mjs - 移除右下角更多菜单中的官方登录和意见反馈入口
+patches/remote-workspace.mjs - 区分本机与已由 Host 装配的远端页面，保持单次注入、远端流地址和页面错误隔离
 patches/index.mjs - 聚合入口；新增补丁在此登记一行
 patches/apply.test.mjs - 补丁头部回归验收，检查多补丁折叠、旧头部迁移及目标平台脚本执行
 patches/patches.test.mjs - 沙箱副本上的全接缝断言验收，官方升级时的第一道门禁
+patches/web-boot-check.mjs - 执行真实官方 Web 入口，控制 Desktop IPC 与 Host 装配时序，验证远端 loader 唯一性及失败隔离
 build/checkout.mjs - 官方源码检出；复用 bare Git 对象，每次按锁定 commit 重建 worktree
 build/build.mjs - 检出 → 施加补丁 → 官方原生构建流水线的编排入口；标签构建可传递 DSH_DESKTOP_BUILD_VERSION
 build/prepare-release.mjs - 校验三平台产物后汇总 Release 资产，按真实 EXE/ZIP 生成 nightly.yml 与双架构 nightly-mac.yml，下载 URL 固定到发行标签
@@ -31,7 +33,7 @@ LICENSE - OwnDsh 自有补丁、构建脚本、资源和文档的 MIT 许可证�
 .gitignore / .gitattributes - 产物和秘密排除、跨平台文本换行
 </config>
 
-发行差异分为七个边界：掐断官方登录入口、预置 OwnDsh 插件、切换 OwnDsh Desktop 品牌、隔离本地数据、隔离终端命令、接入 OwnDsh GitHub Release 更新、移除右下角官方账号入口。默认 `DSH_HOME` 为 `~/.owndsh`，显式 `DSH_HOME` 与 Electron `--user-data-dir` 仍可覆盖；appId、外部协议、Electron userData 和平台图标与官方端分开。官方已提供回环动态端口和 macOS/Windows unsigned 入口，OwnDsh 直接复用；macOS unsigned 的 ShipIt 身份由 `OWNDSH-BRANDING` 在官方 `afterSign` 中只固定顶层 App 的 designated requirement，nested code 继续使用官方签名。unsigned 包的更新元数据从 OwnDsh GitHub Release 的 `nightly.yml`（Windows）或 `nightly-mac.yml`（macOS）读取；签名构建仍使用官方更新配置。历史分支的功能性改造（shell 运行时依赖提升、跨平台包收窄）已删除——官方已实现或不必要。不要从历史分支恢复任何补丁。
+发行差异分为八个边界：掐断官方登录入口、预置 OwnDsh 插件、切换 OwnDsh Desktop 品牌、隔离本地数据、隔离终端命令、接入 OwnDsh GitHub Release 更新、移除右下角官方账号入口、协调远端页面启动。默认 `DSH_HOME` 为 `~/.owndsh`，显式 `DSH_HOME` 与 Electron `--user-data-dir` 仍可覆盖；appId、外部协议、Electron userData 和平台图标与官方端分开。官方已提供回环动态端口和 macOS/Windows unsigned 入口，OwnDsh 直接复用；macOS unsigned 的 ShipIt 身份由 `OWNDSH-BRANDING` 在官方 `afterSign` 中只固定顶层 App 的 designated requirement，nested code 继续使用官方签名。unsigned 包的更新元数据从 OwnDsh GitHub Release 的 `nightly.yml`（Windows）或 `nightly-mac.yml`（macOS）读取；签名构建仍使用官方更新配置。远端页面沿用 Host 已装配的模块系统，Desktop 只提供当前 view 所需的可信回环流地址；远端失败停留在页面，本机根页继续使用官方 Desktop 启动流程。历史分支的功能性改造（shell 运行时依赖提升、跨平台包收窄）已删除——官方已实现或不必要。不要从历史分支恢复任何补丁。
 
 新增补丁：在 patches/ 建文件，用 apply.mjs 施加，在 index.mjs 登记一行，在 OFFICIAL-DESKTOP-PATCHES.md 记台账。升级时改 upstream.json 后先跑 npm test；断言失败即官方改动了接缝，按台账逐条核对，不要放宽断言。官方已实现的能力立即删除对应接缝。
 

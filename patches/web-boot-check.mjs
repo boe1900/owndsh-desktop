@@ -13,19 +13,19 @@ import { createContext, runInContext } from 'node:vm'
 const REMOTE_PATH = '/enterprise/remote/views/1ea31969-eb17-4864-8b68-2f492b3bcd4d/'
 const HOST_ORIGIN = 'http://127.0.0.1:41921/'
 
-function frame(source, { pathname = REMOTE_PATH, desktop = true, served = true } = {}) {
+function frame(source, { pathname = REMOTE_PATH, desktop = true, served = true, gatePresent = true, rootExists = true } = {}) {
   const ipc = Promise.withResolvers()
   const gate = Promise.withResolvers()
   if (served) gate.resolve()
   const loader = { registrations: new Map(), load(value) { this.registrations.set(value.id, value) } }
-  const state = { injections: 0, snapshots: [], failures: [], fatal: [] }
+  const state = { injections: 0, snapshots: [], failures: [], fatal: [], uncaught: [] }
   const globals = {
     URL, Promise, console,
     location: { pathname },
-    __DSH_BOOT_READY__: gate,
+    __DSH_BOOT_READY__: gatePresent ? gate : undefined,
     __ModuleLoader__: loader,
     document: {
-      getElementById: () => ({}),
+      getElementById: () => rootExists ? {} : null,
       createElement: () => ({}),
       head: { append: script => script.onload() },
     },
@@ -51,7 +51,11 @@ function frame(source, { pathname = REMOTE_PATH, desktop = true, served = true }
     },
   }
   const script = stripTypeScriptTypes(source.replace(/^import .*$/gm, ''), { mode: 'strip' })
-  runInContext(script, createContext(globals), { filename: 'apps/web/src/main.ts' })
+  try {
+    runInContext(script, createContext(globals), { filename: 'apps/web/src/main.ts' })
+  } catch (error) {
+    state.uncaught.push(String(error))
+  }
   return { globals, ipc, gate, loader, state }
 }
 
@@ -84,6 +88,38 @@ export async function verifyWebBoot(source) {
     assert.deepEqual(current.state.fatal, [])
     assert.equal(current.state.injections, 0)
     assert.equal(current.globals.__ModuleLoader__, current.loader)
+  })
+
+  await test('remote document waits for its served bootstrap after Desktop IPC resolves', async () => {
+    const current = frame(source, { served: false })
+    current.ipc.resolve({ injections: [], streamBaseUrl: HOST_ORIGIN })
+    await setImmediate()
+    assert.equal(current.state.snapshots.length, 0)
+    current.gate.resolve()
+    await setImmediate()
+    assert.equal(current.state.snapshots.length, 1)
+    assert.equal(current.state.snapshots[0].loader, current.loader)
+    assert.equal(current.state.snapshots[0].transport.ownsHost, false)
+    assert.equal(current.state.injections, 0)
+  })
+
+  await test('missing remote bootstrap fails in the page instead of injecting local bundles', async () => {
+    const current = frame(source, { gatePresent: false })
+    current.ipc.resolve({ injections: [], streamBaseUrl: HOST_ORIGIN })
+    await setImmediate()
+    assert.equal(current.state.snapshots.length, 0)
+    assert.deepEqual(current.state.failures, ['Error: desktop web: remote document readiness is missing'])
+    assert.deepEqual(current.state.fatal, [])
+    assert.equal(current.state.injections, 0)
+    assert.equal(current.globals.__ModuleLoader__, current.loader)
+  })
+
+  await test('synchronous remote document failures do not enter the Desktop fatal path', async () => {
+    const current = frame(source, { rootExists: false })
+    await setImmediate()
+    assert.deepEqual(current.state.uncaught, ['Error: web app: missing #root'])
+    assert.deepEqual(current.state.fatal, [])
+    assert.equal(current.state.snapshots.length, 0)
   })
 
   await test('local Desktop root still injects once and owns its Host', async () => {
