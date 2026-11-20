@@ -12,6 +12,7 @@ packaging.mjs: 打包配置接缝，策略 origin 未配置时跳过强制更新
 github-updates.mjs: unsigned 包改用 OwnDsh GitHub Release 的 nightly 更新源，签名发行路径保留官方配置
 account-menu.mjs: 从右下角更多菜单移除官方登录与意见反馈，保留设置和已登录后的退出登录
 index.mjs: 聚合入口，applyPatches 依次施加全部补丁；新增补丁在此登记
-patches.test.mjs: 沙箱副本上的全接缝断言验收，覆盖 DSH 正式侧栏接缝、八语言菜单/安装器、官方通知 slot、显式 userData 隔离与原有发行边界
+web-boot-check.mjs: 执行受补丁的真实 Web 入口，控制 Desktop IPC 延迟，验证远程装配唯一性、流地址与失败隔离
+patches.test.mjs: 沙箱副本上的全接缝断言及 Web 启动行为验收，覆盖 DSH 正式侧栏接缝、八语言菜单/安装器、官方通知 slot、显式 userData 隔离与原有发行边界
 
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md

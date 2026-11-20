@@ -1,6 +1,6 @@
 /**
  * [INPUT]: patches/ 下全部补丁与一份临时官方 checkout
- * [OUTPUT]: 全部补丁锚点命中、DSH 正式侧栏复用、登录链路和发行隔离边界保留的通过证据
+ * [OUTPUT]: 全部补丁锚点命中、DSH 正式侧栏、登录与发行隔离边界，以及真实 Web 入口启动行为的通过证据
  * [POS]: patches/ 的唯一验收入口；失败立即阻断构建
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
@@ -11,6 +11,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { applyPatches } from './index.mjs'
 import { checkoutOfficial } from '../build/checkout.mjs'
+import { verifyWebBoot } from './web-boot-check.mjs'
 
 const PLUGIN_VERSION = JSON.parse(readFileSync(join(resolve(import.meta.dirname, '..'), 'upstream.json'), 'utf8')).pluginVersion
 const REPO_ROOT = resolve(import.meta.dirname, '..')
@@ -187,6 +188,8 @@ try {
 
   assert.equal(existsSync(join(sandbox, 'apps/desktop/cli/dsh')), false, 'official macOS CLI name still present')
   assert.equal(existsSync(join(sandbox, 'apps/desktop/cli/dsh.cmd')), false, 'official Windows CLI name still present')
+
+  await verifyWebBoot(readFileSync(join(sandbox, 'apps/web/src/main.ts'), 'utf8'))
 
   console.log('owndsh: all seams verified on', PLUGIN_VERSION)
 } finally {
