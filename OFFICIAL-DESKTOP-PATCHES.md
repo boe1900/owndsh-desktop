@@ -60,6 +60,8 @@ release job 必须保留各平台 Artifact 的独立目录，禁止先用 `merge
 
 `latest/download` 仅用于发现更新清单。两端清单的 `files[].url` 和 `path` 均固定为 `https://github.com/boe1900/owndsh-desktop/releases/download/<tag>/<原始文件名>`。GenericProvider 保留配置中的基址，若清单使用相对文件名，客户端持有旧清单期间 `latest` 切换会把旧文件名请求到新版本目录并返回 404。绝对地址使下载与清单所属版本绑定，已安装的 electron-updater 6.8.9 可直接读取，无需更换客户端或关闭差分下载。已经保存在客户端进程中的旧清单仍需重新检查更新后才会替换。
 
+2026-11-20 对现有 `v0.2.2-rc.5` 仅替换 Windows `nightly.yml` 的两个下载地址字段，保留版本、日期、大小和校验值。线上 latest 与标签入口已由旧版 GenericProvider 解析，均指向 rc.5 EXE 且返回 HTTP 200。其余九个资产保持原件，包括仍使用相对地址的 macOS 清单；后续标签发布由修复后的脚本统一生成两端固定地址。当前 Windows 现场旧文件名的来源尚未确认，也未完成 Windows 真机原地安装验证。
+
 ## 登录掐断的边界
 
 `OWNDSH-PATCH-LOGIN-GATE` 只掐断**原生 Electron 外壳的登录入口**：启动判定、账号登出回路、会话过期回路。三处短路后官方欢迎窗口在任何生命周期下都不再弹出。企业登录由 `owndsh-plugin` 的 `shell.overlay`（`order: -100`）接管。
