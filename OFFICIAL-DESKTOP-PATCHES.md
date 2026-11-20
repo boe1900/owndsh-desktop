@@ -18,6 +18,10 @@ rc.5 已提供 macOS ARM64/x64 的官方 `package:mac:*:unsigned` 入口，OwnDs
 
 远端页面只从 Desktop IPC 获取可信 `streamBaseUrl`，在验证 view 的 UUID 路径后补上当前 mount，并设置 `ownsHost: false`。它不重复执行 injections，启动失败也不调用外壳的 fatal 入口。本机根页保持官方单次注入和 `ownsHost: true`，普通 HTTP 页面继续使用 Host 的装配流程。`web-boot-check.mjs` 执行真实官方入口，覆盖 IPC 延迟与拒绝、Host gate 延迟与缺失、非法路径、同步页面失败、本机根页及普通 HTTP 页面。
 
+修复于 2026-11-20 随 [v0.2.2-rc.5.20261120.1](https://github.com/boe1900/owndsh-desktop/releases/tag/v0.2.2-rc.5.20261120.1) 发布，官方版本和预置插件锁保持不变。回归 29 项通过、2 项平台测试跳过。三平台构建及官方随包验收见 [Actions 44700489374](https://github.com/boe1900/owndsh-desktop/actions/runs/44700489374)。Intel 首轮在随包 XLSX 转换时触发 LibreOffice 超时，重跑失败任务后完整通过，未修改或跳过验收。
+
+未经改写的正式 ARM64 ZIP 已核对 Release SHA-256，并在隔离 profile 连接独立 rc.5 Host。远端页面正常装配，模块 facade 只安装一次，实际 WebSocket 保留 view 前缀并收发消息；会话列表、远端独有文件读取和终端工作目录均返回目标 Host 的结果，本机会话列表不含目标会话。两端更新清单与 latest 一致，下载地址固定到本次标签。Windows 和 Intel 已通过各自原生 CI 及随包验收，本轮未在这两个平台执行桌面远控交互验收，也未复验旧版本原地自动安装更新。原生网站 provider 的 503 仍属于现有远端接口准入范围，不计为本次启动故障。
+
 ## rc.3 升级接缝
 
 目标锁为 `dsh-v0.2.2-rc.3`、commit `38a6a5c965aa99ab525161efb7cc5cf1fe62fced`。官方增加八语言 `CFBundleLocalizations` 和桌面菜单，品牌补丁保留本地化并替换全部八语言产品名。Windows 安装器文案改由 `installer-locales.mjs` 从 JSON 生成，补丁迁移到官方解析器，保留语言、格式占位符和键校验。macOS 打包新增第二条 App 路径，仍逐项断言。账号菜单由奖励通知字段改为 `renderSlot`，OwnDsh 保留官方通知注入。example appId 变成 `com.deepseek.dsh`，OwnDsh 继续固定自己的 `com.owndsh.desktop`。
