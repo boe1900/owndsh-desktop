@@ -25,7 +25,7 @@ patches/apply.test.mjs - 补丁头部回归验收，检查多补丁折叠、旧�
 patches/patches.test.mjs - 沙箱副本上的全接缝断言验收，官方升级时的第一道门禁
 build/checkout.mjs - 官方源码检出；复用 bare Git 对象，每次按锁定 commit 重建 worktree
 build/build.mjs - 检出 → 施加补丁 → 官方原生构建流水线的编排入口；标签构建可传递 DSH_DESKTOP_BUILD_VERSION
-build/prepare-release.mjs - 校验三平台产物后汇总 Release 资产，用实际 ZIP 校验值生成同时覆盖 ARM64/x64 的 nightly-mac.yml
+build/prepare-release.mjs - 校验三平台产物后汇总 Release 资产，按真实 EXE/ZIP 生成 nightly.yml 与双架构 nightly-mac.yml，下载 URL 固定到发行标签
 OFFICIAL-DESKTOP-PATCHES.md - 补丁台账、登录掐断边界与升级步骤
 LICENSE - OwnDsh 自有补丁、构建脚本、资源和文档的 MIT 许可证；上游 Harness 与第三方依赖按各自许可证执行
 .gitignore / .gitattributes - 产物和秘密排除、跨平台文本换行

@@ -56,7 +56,9 @@ rc.5 已提供 macOS ARM64/x64 的官方 `package:mac:*:unsigned` 入口，OwnDs
 
 `latest/download` 只按文件名转发 GitHub 最新 Release 的资产。`.github/workflows/build.yml` 在推送 `v*` 标签时构建三组安装包并自动下载 Artifacts，把去掉 `v` 的标签作为构建版本，创建或更新对应 Release；main push 不构建，PR/手动构建只上传 Artifacts，不发布 Release。标签必须是官方产品版本允许的构建版本，例如当前产品 `0.2.2-rc.5` 使用标签 `v0.2.2-rc.5`；官方产品版本升级后再使用对应的新版本。发布每个平台的新版本时，必须保留官方生成的文件名：Windows 为 `nightly.yml`、`*.exe`、`*.exe.blockmap`；macOS 为 `nightly-mac.yml`、每个架构的 `*.zip`、`*.zip.blockmap`，`.dmg` 只用于首次安装。Release 必须是已发布的最新版本，不能是 Draft；版本号也必须递增，否则 electron-updater 会认为没有新版本。
 
-release job 必须保留各平台 Artifact 的独立目录，禁止先用 `merge-multiple: true` 展平；两个 macOS 任务产生同名 feed，会静默覆盖。`build/prepare-release.mjs` 按发行标签检查 Windows 安装包、ARM64/x64 的 DMG/ZIP 以及全部 blockmap，缺失或版本不符时停止发布；Windows feed 保留原件，macOS feed 按两个实际 ZIP 的大小和 SHA-512 重建。`nightly-mac.yml` 的 `files` 同时包含 ARM64/x64，electron-updater 6.8.9 根据文件名选择正确架构；JSON 序列化是有效 YAML，可由其标准解析器读取。
+release job 必须保留各平台 Artifact 的独立目录，禁止先用 `merge-multiple: true` 展平；两个 macOS 任务产生同名 feed，会静默覆盖。`build/prepare-release.mjs` 按发行标签检查 Windows 安装包、ARM64/x64 的 DMG/ZIP 以及全部 blockmap，缺失或版本不符时停止发布。两端 feed 都按实际 EXE 或 ZIP 的大小和 SHA-512 重建，核心字段为 `version`、`files`、兼容字段 `path` 与 `sha512`、`releaseDate`。`nightly-mac.yml` 的 `files` 同时包含 ARM64/x64，兼容字段仍指向 Intel ZIP，electron-updater 6.8.9 根据文件名选择正确架构。JSON 序列化是有效 YAML，可由其标准解析器读取。未来若启用分批更新或其他 feed 字段，必须明确扩展生成契约，原 Artifact 清单不会透传。
+
+`latest/download` 仅用于发现更新清单。两端清单的 `files[].url` 和 `path` 均固定为 `https://github.com/boe1900/owndsh-desktop/releases/download/<tag>/<原始文件名>`。GenericProvider 保留配置中的基址，若清单使用相对文件名，客户端持有旧清单期间 `latest` 切换会把旧文件名请求到新版本目录并返回 404。绝对地址使下载与清单所属版本绑定，已安装的 electron-updater 6.8.9 可直接读取，无需更换客户端或关闭差分下载。已经保存在客户端进程中的旧清单仍需重新检查更新后才会替换。
 
 ## 登录掐断的边界
 
