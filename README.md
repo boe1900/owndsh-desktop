@@ -2,7 +2,7 @@
 
 基于 DeepSeek Harness 官方 Electron 桌面端构建的 OwnDsh 发行。本仓库不复制官方业务源码；所有差异由 `patches/` 在构建时对官方 checkout 施加，官方升级时以断言暴露接缝变化。
 
-当前锁定官方 `dsh-v0.2.2-rc.5`，预置 `owndsh-plugin@0.1.0-beta.22`（版本锁定见 `upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
+当前锁定官方 `dsh-v0.2.2-rc.5`，预置 `owndsh-plugin@0.1.0-beta.23`（版本锁定见 `upstream.json`）。接缝清单与升级步骤见 [OFFICIAL-DESKTOP-PATCHES.md](OFFICIAL-DESKTOP-PATCHES.md)。
 
 ## 下载与首次启动
 
